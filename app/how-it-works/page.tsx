@@ -55,9 +55,6 @@ export default function HowItWorksPage() {
       <main className="flex-1">
         <HowItWorksSection
           onOpenDirectPost={() => setShowDirectPostModal(true)}
-          onOpenValuation={() => {
-            router.push("/?tab=seller#find-value");
-          }}
         />
       </main>
 

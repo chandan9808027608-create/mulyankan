@@ -5,11 +5,10 @@ import Link from "next/link";
 
 interface HowItWorksProps {
   onOpenDirectPost?: () => void;
-  onOpenValuation?: () => void;
   initialRole?: "seller" | "dealer";
 }
 
-export default function HowItWorksSection({ onOpenDirectPost, onOpenValuation, initialRole }: HowItWorksProps) {
+export default function HowItWorksSection({ onOpenDirectPost, initialRole }: HowItWorksProps) {
   const [activeTab, setActiveTab] = useState<"seller" | "dealer">(initialRole || "seller");
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -200,15 +199,12 @@ export default function HowItWorksSection({ onOpenDirectPost, onOpenValuation, i
                     Post Bike Directly
                   </button>
                 )}
-                {onOpenValuation && (
-                  <button
-                    type="button"
-                    onClick={onOpenValuation}
-                    className="w-full sm:w-auto px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs transition-all cursor-pointer text-center"
-                  >
-                    Check Valuation First
-                  </button>
-                )}
+                <Link
+                  href="/condition-report"
+                  className="w-full sm:w-auto px-4 py-3 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white font-semibold text-xs transition-all cursor-pointer text-center"
+                >
+                  Post With Full Details
+                </Link>
               </div>
             </div>
           </div>

@@ -3,7 +3,6 @@
 import React, { useState, useEffect, useRef } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
-import { ValuationCalculatorWidget } from "./lib/ValuationCalculatorWidget";
 import { DealerBiddingConsole } from "./lib/DealerBiddingConsole";
 import { INITIAL_BIDS, INITIAL_MESSAGES, BidRecord, DirectMessage } from "./lib/dealerBidsData";
 import { SellerPostingsDashboard } from "./lib/SellerPostingsDashboard";
@@ -1368,7 +1367,7 @@ export default function MulyankanApp() {
                     onClick={handleEvaluateClick}
                     className="inline-flex items-center justify-center gap-3 px-6 py-3.5 rounded-full font-bold text-sm text-black bg-gradient-to-r from-[#E5B869] to-[#D4A352] hover:brightness-110 hover:shadow-[0_0_25px_rgba(229,184,105,0.4)] active:scale-[0.98] transition-all duration-200 cursor-pointer group w-full sm:w-auto"
                   >
-                    <span>Evaluate My Vehicle</span>
+                    <span>Post My Vehicle</span>
                     <svg className="w-4 h-4 transition-transform duration-200 group-hover:translate-x-1" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M14 5l7 7m0 0l-7 7m7-7H3" />
                     </svg>
@@ -1387,7 +1386,7 @@ export default function MulyankanApp() {
 
                   <div className="flex items-center justify-center sm:justify-start gap-2 text-xs text-neutral-400 font-medium">
                     <span className="w-2 h-2 rounded-full bg-emerald-500 animate-pulse shrink-0" />
-                    <span>Free &amp; instant verified valuation in 45s</span>
+                    <span>Free to post &amp; receive offers from verified showrooms</span>
                   </div>
                 </div>
               </div>
@@ -1451,28 +1450,11 @@ export default function MulyankanApp() {
               />
             )}
 
-            {/* Interactive Fair Market Valuation Engine (Find Value Section) */}
-            <div id="find-value" className="mt-10 scroll-mt-20">
-              <ValuationCalculatorWidget
-                initialBrand="Yamaha"
-                initialModel="Yamaha YZF R15"
-                initialYear={2023}
-                initialMileage={8200}
-                onProceedToAuction={({ model, year }) => {
-                  playBikeRevSound();
-                  router.push(`/condition-report?model=${encodeURIComponent(model)}&year=${encodeURIComponent(year)}`);
-                }}
-              />
-            </div>
           </main>
 
           {/* 1. Operating Protocol: How It Works Section */}
           <HowItWorksSection
             onOpenDirectPost={() => setShowDirectPostModal(true)}
-            onOpenValuation={() => {
-              const el = document.getElementById("find-value");
-              if (el) el.scrollIntoView({ behavior: "smooth" });
-            }}
           />
 
           {/* 2. Teku Corridor & Transparency: About Us Section */}

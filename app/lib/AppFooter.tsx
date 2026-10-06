@@ -45,8 +45,8 @@ export default function AppFooter({ onOpenDirectPost, onNavigateTab }: AppFooter
               </Link>
             </li>
             <li>
-              <Link href="/#find-value" className="hover:text-[#E5B869] transition-colors">
-                Fair Valuation Engine
+              <Link href="/condition-report" className="hover:text-[#E5B869] transition-colors">
+                Post With Full Details
               </Link>
             </li>
             {onOpenDirectPost && (

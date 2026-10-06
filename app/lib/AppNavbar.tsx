@@ -162,14 +162,17 @@ export default function AppNavbar({
             </button>
           )}
 
-          {/* Valuation Engine */}
-          <button
-            type="button"
-            onClick={() => handleNavClick("seller", "find-value")}
-            className="px-3.5 py-1.5 rounded-full text-neutral-300 hover:text-white hover:bg-white/5 transition-all cursor-pointer"
+          {/* Full-details posting form */}
+          <Link
+            href="/condition-report"
+            className={`px-3.5 py-1.5 rounded-full transition-all cursor-pointer ${
+              pathname === "/condition-report"
+                ? "bg-[#E5B869] text-black font-bold shadow-md"
+                : "text-neutral-300 hover:text-white hover:bg-white/5"
+            }`}
           >
-            Valuation
-          </button>
+            Post Vehicle
+          </Link>
 
           {/* How It Works */}
           <button
@@ -366,13 +369,15 @@ export default function AppNavbar({
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
               </button>
             )}
-            <button
-              type="button"
-              onClick={() => handleNavClick("seller", "find-value")}
-              className="p-3 rounded-xl text-left text-xs font-bold bg-white/5 text-neutral-200 hover:bg-white/10 cursor-pointer"
+            <Link
+              href="/condition-report"
+              onClick={() => setIsMobileMenuOpen(false)}
+              className={`p-3 rounded-xl text-left text-xs font-bold transition-all cursor-pointer ${
+                pathname === "/condition-report" ? "bg-[#E5B869] text-black" : "bg-white/5 text-neutral-200 hover:bg-white/10"
+              }`}
             >
-              Find Value
-            </button>
+              Post Vehicle
+            </Link>
             <button
               type="button"
               onClick={() => handleNavClick("seller", "how-it-works")}
