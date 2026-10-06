@@ -1685,12 +1685,14 @@ export default function MulyankanApp() {
         ) : (
           <div className="min-h-screen flex flex-col bg-[#0d0e12]">
             {/* Dashboard Header Bar - Single row, sleek and compact as before */}
-            <header className="border-b border-white/10 bg-[#121318] px-3 sm:px-6 py-2.5 sm:py-3 flex items-center justify-between gap-2 overflow-x-auto no-scrollbar">
-              <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+            <header className="sticky top-0 z-40 border-b border-white/10 bg-[#121318]/95 backdrop-blur-md">
+              {/* Row 1: identity + actions */}
+              <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 h-14 flex items-center justify-between gap-2 sm:gap-3">
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
                 <button
                   type="button"
                   onClick={handleUndoBack}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-[#E5B869] hover:text-white transition-all cursor-pointer shadow"
+                  className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 shrink-0 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-[#E5B869] hover:text-white transition-all cursor-pointer shadow"
                   title="Undo / Go back"
                 >
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -1707,14 +1709,14 @@ export default function MulyankanApp() {
                   <MulyankanLogo />
                 </button>
 
-                <div className="hidden xl:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-400 font-semibold">
+                <div className="hidden lg:flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-[11px] text-emerald-400 font-semibold min-w-0">
                   <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse shrink-0" />
-                  <span className="truncate max-w-[150px]">Workshop: {selectedReconditionHub}</span>
+                  <span className="truncate max-w-[180px]">Workshop: {selectedReconditionHub}</span>
                   <span className="text-[10px] text-neutral-400 font-mono bg-black/40 px-1.5 py-0.5 rounded border border-white/10">PAN: {reconditionPan}</span>
                 </div>
               </div>
 
-              {/* Right-aligned group: Recruitment Bell + Compact Gliding Links + Exit Workshop Session button */}
+              {/* Right-aligned group: Recruitment Bell + Exit Workshop Session button */}
               <div className="flex items-center gap-2 sm:gap-3 shrink-0">
                 {/* Staff Recruitment Notification Bell */}
                 <button
@@ -1735,49 +1737,6 @@ export default function MulyankanApp() {
                   )}
                 </button>
 
-                <GlidingNavLinks
-                  size="sm"
-                  items={[
-                    {
-                      label: "Live Floor",
-                      isActive: dealerViewMode === "auctions",
-                      onClick: () => {
-                        navigateTo("dealer", "auctions");
-                      },
-                    },
-                    {
-                      label: "Swipe Deck",
-                      isActive: dealerViewMode === "swiper",
-                      onClick: () => {
-                        navigateTo("dealer", "swiper");
-                      },
-                    },
-                    {
-                      label: "Staff War Room",
-                      isActive: dealerViewMode === "staff_chat",
-                      onClick: () => {
-                        navigateTo("dealer", "staff_chat");
-                      },
-                    },
-                    {
-                      label: "Recruitment",
-                      isActive: dealerViewMode === "recruitment",
-                      onClick: () => {
-                        navigateTo("dealer", "recruitment");
-                      },
-                    },
-                    {
-                      label: "Won Vehicles",
-                      isActive: dealerViewMode === "inventory",
-                      onClick: () => {
-                        navigateTo("dealer", "inventory");
-                      },
-                    },
-                    { label: "Seller View", onClick: () => navigateTo("seller") },
-                    { label: "My Postings", onClick: () => navigateTo("seller_dashboard") },
-                  ]}
-                />
-
                 <button
                   type="button"
                   onClick={() => {
@@ -1786,8 +1745,58 @@ export default function MulyankanApp() {
                   }}
                   className="text-xs font-semibold px-3 py-1.5 rounded-full border border-red-500/30 bg-red-500/10 hover:bg-red-500/20 text-red-300 hover:text-white transition-all cursor-pointer shrink-0"
                 >
-                  Exit Workshop Mode
+                  <span className="sm:hidden">Exit</span>
+                  <span className="hidden sm:inline">Exit Workshop Mode</span>
                 </button>
+              </div>
+              </div>
+
+              {/* Row 2: section navigation (swipeable on phones) */}
+              <div className="border-t border-white/5">
+                <div className="w-full max-w-7xl mx-auto px-3 sm:px-6 py-2 overflow-x-auto no-scrollbar flex md:justify-center">
+                  <GlidingNavLinks
+                    size="sm"
+                    items={[
+                      {
+                        label: "Live Floor",
+                        isActive: dealerViewMode === "auctions",
+                        onClick: () => {
+                          navigateTo("dealer", "auctions");
+                        },
+                      },
+                      {
+                        label: "Swipe Deck",
+                        isActive: dealerViewMode === "swiper",
+                        onClick: () => {
+                          navigateTo("dealer", "swiper");
+                        },
+                      },
+                      {
+                        label: "Staff War Room",
+                        isActive: dealerViewMode === "staff_chat",
+                        onClick: () => {
+                          navigateTo("dealer", "staff_chat");
+                        },
+                      },
+                      {
+                        label: "Recruitment",
+                        isActive: dealerViewMode === "recruitment",
+                        onClick: () => {
+                          navigateTo("dealer", "recruitment");
+                        },
+                      },
+                      {
+                        label: "Won Vehicles",
+                        isActive: dealerViewMode === "inventory",
+                        onClick: () => {
+                          navigateTo("dealer", "inventory");
+                        },
+                      },
+                      { label: "Seller View", onClick: () => navigateTo("seller") },
+                      { label: "My Postings", onClick: () => navigateTo("seller_dashboard") },
+                    ]}
+                  />
+                </div>
               </div>
             </header>
 
