@@ -19,14 +19,14 @@ interface AppNavbarProps {
 
 export const MulyankanBrandLogo = React.memo(function MulyankanBrandLogo() {
   return (
-    <div className="flex items-center gap-2.5 select-none">
-      <div className="w-8 h-8 rounded-full border-2 border-[#E5B869] flex items-center justify-center bg-[#E5B869]/10 shadow-[0_0_12px_rgba(229,184,105,0.35)]">
+    <div className="flex items-center gap-2 sm:gap-2.5 select-none min-w-0">
+      <div className="w-8 h-8 shrink-0 rounded-full border-2 border-[#E5B869] flex items-center justify-center bg-[#E5B869]/10 shadow-[0_0_12px_rgba(229,184,105,0.35)]">
         <svg className="w-4 h-4 text-[#E5B869]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
         </svg>
       </div>
       <div className="flex flex-col leading-none">
-        <span className="text-lg sm:text-xl font-black tracking-wider text-white">
+        <span className="text-base min-[400px]:text-lg sm:text-xl font-black tracking-wide sm:tracking-wider text-white whitespace-nowrap">
           MULYANKAN<span className="text-[#E5B869]">.NP</span>
         </span>
         <span className="text-[9px] text-neutral-400 font-mono tracking-widest hidden sm:inline">
@@ -105,27 +105,27 @@ export default function AppNavbar({
 
   return (
     <header className="sticky top-0 z-50 bg-[#121318]/95 backdrop-blur-md border-b border-white/10 transition-colors">
-      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-4">
+      <div className="w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 h-16 flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Brand Logo & Undo/Back Button */}
-        <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
           {(activeTab !== "seller" || !isHome) && onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-[#E5B869] hover:text-white transition-all cursor-pointer shadow"
+              className="flex items-center gap-1.5 p-2 sm:px-3 sm:py-1.5 shrink-0 rounded-full bg-white/10 hover:bg-white/20 border border-white/20 text-xs font-bold text-[#E5B869] hover:text-white transition-all cursor-pointer shadow"
               title="Undo / Go back"
             >
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              <span>Back</span>
+              <span className="hidden sm:inline">Back</span>
             </button>
           )}
 
           <button
             type="button"
             onClick={() => handleNavClick("seller")}
-            className="flex items-center text-left cursor-pointer"
+            className="flex items-center text-left cursor-pointer min-w-0"
           >
             <MulyankanBrandLogo />
           </button>
@@ -238,12 +238,12 @@ export default function AppNavbar({
           <button
             type="button"
             onClick={onOpenDirectPost}
-            className="px-3.5 sm:px-4 py-2 rounded-full bg-gradient-to-r from-[#E5B869] to-[#d8ab5c] text-black font-extrabold text-xs hover:brightness-110 shadow-[0_0_15px_rgba(229,184,105,0.3)] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
+            aria-label="Post bike for free" className="p-2 sm:px-4 sm:py-2 rounded-full bg-gradient-to-r from-[#E5B869] to-[#d8ab5c] text-black font-extrabold text-xs hover:brightness-110 shadow-[0_0_15px_rgba(229,184,105,0.3)] active:scale-[0.98] transition-all cursor-pointer flex items-center gap-1.5 shrink-0"
           >
             <svg className="w-3.5 h-3.5 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M12 4v16m8-8H4" />
             </svg>
-            <span>Post Bike</span>
+            <span className="hidden sm:inline">Post Bike</span>
             <span className="text-[9px] bg-black/20 px-1.5 py-0.5 rounded font-black uppercase hidden sm:inline">
               Free
             </span>
@@ -317,7 +317,7 @@ export default function AppNavbar({
           ) : (
             <Link
               href="/login"
-              className="text-xs font-semibold px-3 sm:px-4 py-2 rounded-full border border-white/20 hover:border-[#E5B869] hover:bg-white/5 transition-all text-neutral-300 hover:text-white cursor-pointer shrink-0"
+              className="hidden sm:inline-block text-xs font-semibold px-3 sm:px-4 py-2 rounded-full border border-white/20 hover:border-[#E5B869] hover:bg-white/5 transition-all text-neutral-300 hover:text-white cursor-pointer shrink-0"
             >
               Log In
             </Link>

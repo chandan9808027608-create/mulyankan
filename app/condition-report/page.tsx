@@ -201,7 +201,7 @@ function ConditionReportContent() {
               <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
               </svg>
-              <span>Back</span>
+              <span className="hidden sm:inline">Back</span>
             </button>
             <Link href="/" className="group flex items-center gap-2.5">
               <div className="w-8 h-8 rounded-full border-2 border-[#E5B869] flex items-center justify-center bg-[#E5B869]/10 shadow-[0_0_10px_rgba(229,184,105,0.4)]">
@@ -209,7 +209,7 @@ function ConditionReportContent() {
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.4} d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />
                 </svg>
               </div>
-              <span className="text-xl sm:text-2xl font-black tracking-wider text-white">
+              <span className="text-lg sm:text-2xl font-black tracking-wide sm:tracking-wider text-white">
                 MULYANKAN
               </span>
             </Link>
@@ -222,14 +222,14 @@ function ConditionReportContent() {
           {/* Stepper Status */}
           <div className="flex flex-col items-end gap-1">
             <div className="flex items-center gap-2">
-              <span className="text-xs font-bold uppercase tracking-wider text-[#E5B869]">
+              <span className="text-xs font-bold uppercase tracking-wider text-[#E5B869] whitespace-nowrap">
                 Step 2 of 2
               </span>
               <span className="text-xs text-neutral-400 font-medium hidden md:inline">
                 Condition & Inspection
               </span>
             </div>
-            <div className="w-32 sm:w-44 h-1.5 bg-white/10 rounded-full overflow-hidden">
+            <div className="w-20 sm:w-44 h-1.5 bg-white/10 rounded-full overflow-hidden">
               <div className="w-full h-full bg-[#E5B869] shadow-[0_0_10px_rgba(229,184,105,0.6)] rounded-full" />
             </div>
           </div>

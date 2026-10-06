@@ -1580,7 +1580,7 @@ export default function MulyankanApp() {
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
-                  <span>Back</span>
+                  <span className="hidden sm:inline">Back</span>
                 </button>
                 <button
                   type="button"
@@ -1594,9 +1594,10 @@ export default function MulyankanApp() {
               <button
                 type="button"
                 onClick={() => navigateTo("seller")}
-                className="text-xs font-semibold px-4 py-2 rounded-full border border-white/20 hover:border-[#E5B869] text-neutral-300 hover:text-white transition-all cursor-pointer"
+                className="shrink-0 whitespace-nowrap text-xs font-semibold px-3 sm:px-4 py-2 rounded-full border border-white/20 hover:border-[#E5B869] text-neutral-300 hover:text-white transition-all cursor-pointer"
               >
-                ← Return to Home
+                <span className="sm:hidden">← Home</span>
+                <span className="hidden sm:inline">← Return to Home</span>
               </button>
             </header>
 
@@ -1695,7 +1696,7 @@ export default function MulyankanApp() {
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
                   </svg>
-                  <span>Back</span>
+                  <span className="hidden sm:inline">Back</span>
                 </button>
                 <button
                   type="button"
@@ -1879,7 +1880,7 @@ export default function MulyankanApp() {
           ) : (
             <div className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-8 py-6 flex flex-col md:flex-row gap-6">
               {/* Left Micro Sidebar */}
-              <aside className="w-full md:w-48 shrink-0 flex md:flex-col gap-2">
+              <aside className="w-full md:w-48 shrink-0 grid grid-cols-2 md:flex md:flex-col gap-2">
                 <button
                   type="button"
                   onClick={() => setActiveListingTab("all")}
@@ -1934,7 +1935,7 @@ export default function MulyankanApp() {
                   </span>
                 </button>
 
-                <div className="pt-2 border-t border-white/10 space-y-1.5">
+                <div className="col-span-2 md:col-span-1 pt-2 border-t border-white/10 space-y-1.5">
                   <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 px-1">
                     Showroom Ops
                   </span>

@@ -29,7 +29,7 @@ export default function HowItWorksSection({ onOpenDirectPost, onOpenValuation, i
 
   return (
     <section id="how-it-works" className="w-full py-16 sm:py-24 scroll-mt-16 text-neutral-200">
-      <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-12">
+      <div className="max-w-7xl mx-auto px-4 sm:px-8 space-y-10 sm:space-y-12">
         {/* Section Header */}
         <div className="text-center max-w-3xl mx-auto space-y-3">
           <div className="inline-flex items-center gap-2 px-3 py-1 rounded-full bg-[#E5B869]/10 border border-[#E5B869]/30 text-[#E5B869] text-xs font-mono font-bold">

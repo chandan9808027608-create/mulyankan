@@ -66,7 +66,7 @@ export const ValuationCalculatorWidget = React.memo(function ValuationCalculator
     <div className="w-full rounded-2xl sm:rounded-3xl bg-[#14161f] border border-[#E5B869]/30 p-4 sm:p-7 lg:p-8 shadow-2xl space-y-5 sm:space-y-6">
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 sm:gap-4 border-b border-white/10 pb-4 sm:pb-5">
-        <div className="flex items-center gap-3">
+        <div className="flex items-start sm:items-center gap-3 min-w-0">
           <div className="w-9 h-9 sm:w-10 sm:h-10 rounded-2xl bg-[#E5B869]/20 border border-[#E5B869]/40 flex items-center justify-center text-[#E5B869] shadow-[0_0_15px_rgba(229,184,105,0.3)] shrink-0">
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.2} d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z" />
@@ -180,7 +180,7 @@ export const ValuationCalculatorWidget = React.memo(function ValuationCalculator
             <label className="block text-xs font-semibold text-neutral-300">
               Bluebook Ownership
             </label>
-            <div className="grid grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
               {(["1st", "2nd", "3rd", "4th+"] as const).map((own) => (
                 <button
                   key={own}
@@ -257,7 +257,7 @@ export const ValuationCalculatorWidget = React.memo(function ValuationCalculator
 
         {/* Right 6 Cols: Dynamic Valuation Result & Visual Card */}
         <div className="lg:col-span-6 space-y-4">
-          <div className="rounded-2xl bg-gradient-to-b from-[#181a26] to-[#10121a] border border-[#E5B869]/40 p-5 sm:p-6 space-y-5 shadow-xl">
+          <div className="rounded-2xl bg-gradient-to-b from-[#181a26] to-[#10121a] border border-[#E5B869]/40 p-3.5 sm:p-6 space-y-4 sm:space-y-5 shadow-xl">
             {/* Fair Market Value Highlight */}
             <div className="space-y-1 text-center sm:text-left">
               <span className="text-[11px] uppercase tracking-wider text-neutral-400 font-semibold">

@@ -257,7 +257,7 @@ export default function SignUpPage() {
             <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M10 19l-7-7m0 0l7-7m-7 7h18" />
             </svg>
-            <span>Back</span>
+            <span className="hidden min-[360px]:inline">Back</span>
           </button>
           <Link href="/" className="flex items-center gap-2 group">
             <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-[#E5B869] to-amber-400 flex items-center justify-center font-black text-black text-base shadow group-hover:scale-105 transition-transform">
@@ -267,18 +267,18 @@ export default function SignUpPage() {
               <span className="font-extrabold text-sm tracking-wider uppercase text-white">
                 MULYANKAN<span className="text-[#E5B869]">.NP</span>
               </span>
-              <span className="text-[10px] text-neutral-400 font-mono tracking-widest">
+              <span className="text-[10px] text-neutral-400 font-mono tracking-widest hidden sm:block">
                 NEPAL TWO-WHEELER EXCHANGE
               </span>
             </div>
           </Link>
         </div>
 
-        <div className="flex items-center gap-4 text-xs">
+        <div className="flex items-center gap-4 text-xs shrink-0">
           <span className="text-neutral-400 hidden sm:inline">Already registered?</span>
           <Link
             href="/login"
-            className="px-4 py-2 rounded-full border border-white/20 hover:border-[#E5B869] text-white hover:text-[#E5B869] transition-all font-semibold"
+            className="whitespace-nowrap px-3 sm:px-4 py-2 rounded-full border border-white/20 hover:border-[#E5B869] text-white hover:text-[#E5B869] transition-all font-semibold"
           >
             Log In
           </Link>
@@ -310,7 +310,7 @@ export default function SignUpPage() {
             <button
               type="button"
               onClick={() => handleQuickFill("recondition")}
-              className={`py-2.5 px-2 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+              className={`min-w-0 py-2.5 px-1 sm:px-2 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                 role === "recondition"
                   ? "bg-[#E5B869] text-black shadow-lg"
                   : "text-neutral-400 hover:text-white"
@@ -319,13 +319,13 @@ export default function SignUpPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4" />
               </svg>
-              <span className="truncate">Company (Owner)</span>
+              <span className="text-center leading-tight text-[11px] sm:text-xs">Company (Owner)</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleQuickFill("staff")}
-              className={`py-2.5 px-2 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+              className={`min-w-0 py-2.5 px-1 sm:px-2 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                 role === "staff"
                   ? "bg-[#E5B869] text-black shadow-lg"
                   : "text-neutral-400 hover:text-white"
@@ -334,13 +334,13 @@ export default function SignUpPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z" />
               </svg>
-              <span className="truncate">Showroom Staff</span>
+              <span className="text-center leading-tight text-[11px] sm:text-xs">Showroom Staff</span>
             </button>
 
             <button
               type="button"
               onClick={() => handleQuickFill("seller")}
-              className={`py-2.5 px-2 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
+              className={`min-w-0 py-2.5 px-1 sm:px-2 rounded-xl transition-all cursor-pointer flex flex-col items-center justify-center gap-1 ${
                 role === "seller"
                   ? "bg-[#E5B869] text-black shadow-lg"
                   : "text-neutral-400 hover:text-white"
@@ -349,7 +349,7 @@ export default function SignUpPage() {
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
               </svg>
-              <span className="truncate">Bike Seller</span>
+              <span className="text-center leading-tight text-[11px] sm:text-xs">Bike Seller</span>
             </button>
           </div>
 
