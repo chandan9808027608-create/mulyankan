@@ -357,8 +357,37 @@ const VehicleAuctionCard = React.memo(function VehicleAuctionCard({
 }) {
   const [hoverIndex, setHoverIndex] = useState(0);
 
+  // Touch swipe state: swipe the photo left/right on phones to change image
+  const touchStartRef = useRef<{ x: number; y: number } | null>(null);
+  const swipedRef = useRef(false);
+  const canHover = () =>
+    typeof window !== "undefined" && window.matchMedia("(hover: hover)").matches;
+
+  const handleTouchStart = (e: React.TouchEvent<HTMLDivElement>) => {
+    const t = e.touches[0];
+    touchStartRef.current = { x: t.clientX, y: t.clientY };
+    swipedRef.current = false;
+  };
+
+  const handleTouchEnd = (e: React.TouchEvent<HTMLDivElement>) => {
+    const start = touchStartRef.current;
+    touchStartRef.current = null;
+    if (!start || bike.images.length < 2) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - start.x;
+    const dy = t.clientY - start.y;
+    // Mostly-horizontal drag of 30px+ = swipe; anything smaller stays a tap
+    if (Math.abs(dx) > 30 && Math.abs(dx) > Math.abs(dy) * 1.2) {
+      swipedRef.current = true;
+      setHoverIndex((prev) =>
+        Math.max(0, Math.min(bike.images.length - 1, prev + (dx < 0 ? 1 : -1)))
+      );
+    }
+  };
+
   // Silent glide: smooth image switching without any pop-up or swoosh sounds
   const handleMouseMove = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (!canHover()) return; // touch devices use swipe instead
     const rect = e.currentTarget.getBoundingClientRect();
     const x = e.clientX - rect.left;
     const ratio = Math.max(0, Math.min(1, x / rect.width));
@@ -371,7 +400,7 @@ const VehicleAuctionCard = React.memo(function VehicleAuctionCard({
   return (
     <div
       onClick={onOpenDetails}
-      className={`rounded-2xl bg-[#14161f] border overflow-hidden flex flex-col justify-between transition-all duration-200 shadow-md group cursor-pointer hover:shadow-[0_12px_32px_rgba(0,0,0,0.6)] ${
+      className={`min-w-0 rounded-xl sm:rounded-2xl bg-[#14161f] border overflow-hidden flex flex-col justify-between transition-all duration-200 shadow-md group cursor-pointer hover:shadow-[0_12px_32px_rgba(0,0,0,0.6)] ${
         isLatest
           ? "border-emerald-500/40 hover:border-emerald-400 ring-1 ring-emerald-500/20"
           : "border-white/10 hover:border-[#E5B869]/50"
@@ -381,7 +410,19 @@ const VehicleAuctionCard = React.memo(function VehicleAuctionCard({
         {/* Silent Glide Slideshow Container */}
         <div
           onMouseMove={handleMouseMove}
-          onMouseLeave={() => setHoverIndex(0)}
+          onMouseLeave={() => {
+            if (canHover()) setHoverIndex(0);
+          }}
+          onTouchStart={handleTouchStart}
+          onTouchEnd={handleTouchEnd}
+          // A swipe must not also open the details modal
+          onClickCapture={(e) => {
+            if (swipedRef.current) {
+              e.stopPropagation();
+              swipedRef.current = false;
+            }
+          }}
+          style={{ touchAction: "pan-y" }}
           className="relative aspect-[16/10] bg-black overflow-hidden select-none"
         >
           {/* Active Image */}
@@ -438,28 +479,28 @@ const VehicleAuctionCard = React.memo(function VehicleAuctionCard({
         </div>
 
         {/* Card Content - Humanized, Clean Typography */}
-        <div className="p-4 space-y-3">
+        <div className="p-2.5 sm:p-4 space-y-2 sm:space-y-3">
           {/* Title & Location */}
           <div>
             <div className="flex items-start justify-between gap-2">
-              <h3 className="text-[15px] font-semibold text-white tracking-tight leading-snug group-hover:text-[#E5B869] transition-colors line-clamp-1">
+              <h3 className="text-[13px] sm:text-[15px] font-semibold text-white tracking-tight leading-snug group-hover:text-[#E5B869] transition-colors line-clamp-1 min-w-0">
                 {bike.name}
               </h3>
-              <span className="text-xs text-neutral-400 font-medium shrink-0 pt-0.5">
+              <span className="hidden sm:inline text-xs text-neutral-400 font-medium shrink-0 pt-0.5">
                 {bike.location.split(",")[0]}
               </span>
             </div>
-            <p className="text-xs text-neutral-400 mt-1 flex items-center gap-2 font-normal">
+            <p className="text-[10px] sm:text-xs text-neutral-400 mt-0.5 sm:mt-1 flex items-center gap-1.5 sm:gap-2 font-normal min-w-0">
               <span>{bike.year}</span>
               <span className="text-neutral-600">·</span>
-              <span className="text-neutral-200 font-medium">{bike.mileage}</span>
-              <span className="text-neutral-600">·</span>
-              <span>{bike.ownership.split(" (")[0]}</span>
+              <span className="text-neutral-200 font-medium truncate">{bike.mileage}</span>
+              <span className="hidden sm:inline text-neutral-600">·</span>
+              <span className="hidden sm:inline">{bike.ownership.split(" (")[0]}</span>
             </p>
           </div>
 
           {/* Specs in Clean Natural Line */}
-          <div className="grid grid-cols-2 gap-2 text-xs text-neutral-300 pt-2.5 border-t border-white/[0.08]">
+          <div className="hidden sm:grid grid-cols-2 gap-2 text-xs text-neutral-300 pt-2.5 border-t border-white/[0.08]">
             <div className="flex items-center gap-1.5 truncate text-emerald-400 font-medium">
               <svg className="w-3.5 h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
@@ -486,14 +527,14 @@ const VehicleAuctionCard = React.memo(function VehicleAuctionCard({
           </div>
 
           {/* Offer & Session Status */}
-          <div className="pt-2.5 border-t border-white/[0.08] flex items-baseline justify-between">
-            <div>
-              <p className="text-[11px] text-neutral-400 font-normal">Highest dealer offer</p>
-              <p className="text-base font-bold text-white tracking-tight">{bike.highestBid}</p>
+          <div className="pt-2 sm:pt-2.5 border-t border-white/[0.08] flex flex-col sm:flex-row sm:items-baseline justify-between gap-1">
+            <div className="min-w-0">
+              <p className="text-[10px] sm:text-[11px] text-neutral-400 font-normal">Highest dealer offer</p>
+              <p className="text-sm sm:text-base font-bold text-white tracking-tight truncate">{bike.highestBid}</p>
             </div>
-            <div className="text-right">
-              <p className="text-xs font-medium text-amber-400/95 flex items-center gap-1">
-                <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <div className="sm:text-right">
+              <p className="text-[10px] sm:text-xs font-medium text-amber-400/95 flex items-center gap-1">
+                <svg className="w-3 h-3 sm:w-3.5 sm:h-3.5 shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
                 </svg>
                 <span>{bike.timeLeft}</span>
@@ -504,11 +545,11 @@ const VehicleAuctionCard = React.memo(function VehicleAuctionCard({
       </div>
 
       {/* Action Button */}
-      <div className="p-4 pt-0 space-y-2">
+      <div className="p-2.5 pt-0 sm:p-4 sm:pt-0 space-y-2">
         <button
           type="button"
           onClick={onPlaceBid}
-          className="w-full py-2.5 px-4 rounded-xl font-semibold text-xs text-black bg-[#E5B869] hover:bg-[#d8ab5c] active:scale-[0.99] transition-all cursor-pointer shadow-sm"
+          className="w-full py-2 sm:py-2.5 px-3 sm:px-4 rounded-xl font-semibold text-xs text-black bg-[#E5B869] hover:bg-[#d8ab5c] active:scale-[0.99] transition-all cursor-pointer shadow-sm"
         >
           Make an Offer
         </button>
@@ -518,7 +559,7 @@ const VehicleAuctionCard = React.memo(function VehicleAuctionCard({
             <span>View Full Details</span>
             <span>→</span>
           </span>
-          <div className="flex items-center gap-2.5 text-neutral-500 text-[11px]">
+          <div className="hidden sm:flex items-center gap-2.5 text-neutral-500 text-[11px]">
             {bike.viewCount && (
               <span className="flex items-center gap-1 text-neutral-400">
                 <svg className="w-3 h-3 text-[#E5B869]" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -818,6 +859,7 @@ export default function MulyankanApp() {
   const [filterBrand, setFilterBrand] = useState("all");
   const [filterSort, setFilterSort] = useState<"default" | "price_desc" | "price_asc" | "views" | "year_desc">("default");
   const [showFilterDrawer, setShowFilterDrawer] = useState(false);
+  const [showOpsMenu, setShowOpsMenu] = useState(false);
 
   // Recondition Access Control (Gatekeeping live auction from normal posters)
   const [isReconditionVerified, setIsReconditionVerified] = useState(false);
@@ -1927,9 +1969,27 @@ export default function MulyankanApp() {
                 </button>
 
                 <div className="col-span-2 md:col-span-1 pt-2 border-t border-white/10 space-y-1.5">
-                  <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 px-1">
-                    Showroom Ops
-                  </span>
+                  {/* Phones: tap to reveal. md+: always open (toggle is inert). */}
+                  <button
+                    type="button"
+                    onClick={() => setShowOpsMenu((prev) => !prev)}
+                    aria-expanded={showOpsMenu}
+                    className="w-full flex items-center justify-between px-1 py-1 md:pointer-events-none cursor-pointer md:cursor-default"
+                  >
+                    <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500">
+                      Showroom Ops
+                    </span>
+                    <svg
+                      className={`w-3.5 h-3.5 text-neutral-500 md:hidden transition-transform duration-200 ${showOpsMenu ? "rotate-180" : ""}`}
+                      fill="none"
+                      viewBox="0 0 24 24"
+                      stroke="currentColor"
+                    >
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                    </svg>
+                  </button>
+
+                  <div className={`${showOpsMenu ? "block" : "hidden"} md:block space-y-1.5`}>
 
                   {/* Swift Swipe & Offer */}
                   <button
@@ -2016,6 +2076,7 @@ export default function MulyankanApp() {
                       ACQUIRED
                     </span>
                   </button>
+                  </div>
                 </div>
 
                 <button
@@ -2301,7 +2362,7 @@ export default function MulyankanApp() {
 
               {/* 3x2 Grid of Auction Vehicle Cards with Hover Glide Slideshow */}
               {filteredAuctionItems.length > 0 ? (
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
+                <div className="grid grid-cols-2 lg:grid-cols-3 gap-2.5 sm:gap-5">
                   {filteredAuctionItems.map((bike, idx) => (
                     <VehicleAuctionCard
                       key={bike.id}

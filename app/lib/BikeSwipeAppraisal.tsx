@@ -153,6 +153,10 @@ export default function BikeSwipeAppraisal({
   const [isDragging, setIsDragging] = useState(false);
   const [swipeFeedback, setSwipeFeedback] = useState<"like" | "pass" | null>(null);
 
+  // Vehicle Details Modal State (opened by tapping the card)
+  const [detailBike, setDetailBike] = useState<SwipeBike | null>(null);
+  const [detailImageIndex, setDetailImageIndex] = useState(0);
+
   // Offer Modal State (When liked / swiped right)
   const [offerBike, setOfferBike] = useState<SwipeBike | null>(null);
   const [offerPriceNpr, setOfferPriceNpr] = useState<number>(300000);
@@ -217,10 +221,15 @@ export default function BikeSwipeAppraisal({
   // Mouse / Touch Gesture Handlers
   const cardRef = useRef<HTMLDivElement>(null);
   const dragStartPos = useRef({ x: 0, y: 0 });
+  // Distinguishes a tap (open details) from a swipe: tiny movement + short press
+  const gestureRef = useRef({ startTime: 0, maxDistance: 0 });
+  const TAP_MAX_MOVE_PX = 10;
+  const TAP_MAX_MS = 500;
 
   const handlePointerDown = (e: React.PointerEvent) => {
     setIsDragging(true);
     dragStartPos.current = { x: e.clientX, y: e.clientY };
+    gestureRef.current = { startTime: Date.now(), maxDistance: 0 };
     if (cardRef.current) {
       cardRef.current.setPointerCapture(e.pointerId);
     }
@@ -230,6 +239,9 @@ export default function BikeSwipeAppraisal({
     if (!isDragging) return;
     const deltaX = e.clientX - dragStartPos.current.x;
     const deltaY = e.clientY - dragStartPos.current.y;
+    gestureRef.current.maxDistance = Math.max(gestureRef.current.maxDistance, Math.hypot(deltaX, deltaY));
+    // Don't start moving the card until the finger travels past the tap threshold
+    if (gestureRef.current.maxDistance < TAP_MAX_MOVE_PX) return;
     setDragOffset({ x: deltaX, y: deltaY });
 
     if (deltaX > 80) {
@@ -248,6 +260,21 @@ export default function BikeSwipeAppraisal({
       try {
         cardRef.current.releasePointerCapture(e.pointerId);
       } catch {}
+    }
+
+    // Tap (not a swipe, not a browser-cancelled gesture) -> open vehicle details
+    const { startTime, maxDistance } = gestureRef.current;
+    if (
+      e.type === "pointerup" &&
+      maxDistance < TAP_MAX_MOVE_PX &&
+      Date.now() - startTime < TAP_MAX_MS &&
+      currentBike
+    ) {
+      setDragOffset({ x: 0, y: 0 });
+      setSwipeFeedback(null);
+      setDetailImageIndex(0);
+      setDetailBike(currentBike);
+      return;
     }
 
     // Threshold for complete swipe
@@ -499,7 +526,8 @@ export default function BikeSwipeAppraisal({
                 style={{
                   transform: `translate3d(${dragOffset.x}px, ${dragOffset.y * 0.4}px, 0) rotate(${dragOffset.x * 0.08}deg)`,
                   transition: isDragging ? "none" : "transform 0.25s cubic-bezier(0.175, 0.885, 0.32, 1.275)",
-                  touchAction: "none",
+                  // pan-y: horizontal drags swipe the card, vertical drags still scroll the page
+                  touchAction: "pan-y",
                 }}
                 className="w-full bg-[#161823] border border-white/15 rounded-3xl overflow-hidden shadow-2xl relative cursor-grab active:cursor-grabbing"
               >
@@ -656,7 +684,7 @@ export default function BikeSwipeAppraisal({
               </div>
 
               <div className="text-center mt-3 text-[11px] text-neutral-500 font-mono">
-                Listing {currentIndex + 1} of {deck.length} • Drag card or tap buttons
+                Listing {currentIndex + 1} of {deck.length} • Tap card for details • Swipe or use buttons
               </div>
             </div>
           ) : (
@@ -816,6 +844,131 @@ export default function BikeSwipeAppraisal({
           )}
         </div>
       )}
+
+      {/* VEHICLE DETAILS MODAL (Triggered by tapping the card; swipes never open it) */}
+      {detailBike && (() => {
+        const gallery = detailBike.images && detailBike.images.length > 0
+          ? detailBike.images
+          : [{ url: detailBike.imageUrl, label: detailBike.name }];
+        const activeImage = gallery[Math.min(detailImageIndex, gallery.length - 1)];
+        const specRows: Array<[string, string | undefined]> = [
+          ["Year", detailBike.year],
+          ["Mileage", detailBike.mileage],
+          ["Province", detailBike.province],
+          ["Number Plate", detailBike.nepaliPlate],
+          ["Condition", detailBike.condition],
+          ["Engine & Chassis", detailBike.engineCondition],
+          ["Tyres", detailBike.tyreCondition],
+          ["Papers & Tax", detailBike.paperwork],
+          ["Seller", detailBike.sellerName],
+        ];
+        return (
+          <div
+            className="fixed inset-0 z-50 bg-black/80 backdrop-blur-md flex items-end sm:items-center justify-center sm:p-4 animate-in fade-in duration-200"
+            onClick={() => setDetailBike(null)}
+          >
+            <div
+              className="bg-[#151722] border border-white/15 rounded-t-3xl sm:rounded-3xl w-full max-w-lg max-h-[92vh] overflow-y-auto shadow-2xl text-neutral-200 relative"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <button
+                type="button"
+                onClick={() => setDetailBike(null)}
+                aria-label="Close details"
+                className="absolute top-3 right-3 z-10 p-2 rounded-full bg-black/60 text-neutral-200 hover:text-white hover:bg-black/80 transition-colors cursor-pointer"
+              >
+                <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                </svg>
+              </button>
+
+              <div className="relative w-full aspect-[16/10] bg-black">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img src={activeImage.url} alt={activeImage.label || detailBike.name} className="w-full h-full object-cover" />
+                {activeImage.label && (
+                  <span className="absolute bottom-2 left-2 text-[11px] font-medium bg-black/70 px-2 py-1 rounded-md text-neutral-200">
+                    {activeImage.label}
+                  </span>
+                )}
+              </div>
+              {gallery.length > 1 && (
+                <div className="flex gap-2 p-3 overflow-x-auto no-scrollbar">
+                  {gallery.map((img, idx) => (
+                    <button
+                      key={idx}
+                      type="button"
+                      onClick={() => setDetailImageIndex(idx)}
+                      className={`shrink-0 w-16 h-12 rounded-lg overflow-hidden border-2 cursor-pointer ${
+                        idx === detailImageIndex ? "border-[#E5B869]" : "border-white/10 opacity-70"
+                      }`}
+                    >
+                      {/* eslint-disable-next-line @next/next/no-img-element */}
+                      <img src={img.url} alt="" className="w-full h-full object-cover" />
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              <div className="p-5 space-y-4">
+                <div>
+                  <span className="text-[10px] font-mono uppercase text-[#E5B869] font-bold tracking-widest">
+                    Lot {detailBike.lotNumber}
+                  </span>
+                  <h2 className="text-xl font-black text-white tracking-tight mt-0.5">{detailBike.name}</h2>
+                  <div className="flex flex-wrap items-baseline gap-x-4 gap-y-1 mt-2">
+                    <span className="text-2xl font-black text-white">{detailBike.highestBid}</span>
+                    {detailBike.sellerAskingNpr && (
+                      <span className="text-xs font-bold text-[#E5B869]">
+                        Seller target: NPR {detailBike.sellerAskingNpr.toLocaleString()}
+                      </span>
+                    )}
+                  </div>
+                </div>
+
+                <dl className="grid grid-cols-2 gap-2 text-xs">
+                  {specRows.filter(([, v]) => v).map(([label, value]) => (
+                    <div key={label} className="bg-black/40 border border-white/10 rounded-xl p-2.5 min-w-0">
+                      <dt className="text-[10px] text-neutral-400 font-mono uppercase">{label}</dt>
+                      <dd className="font-semibold text-neutral-200 mt-0.5 break-words">{value}</dd>
+                    </div>
+                  ))}
+                </dl>
+
+                {detailBike.notes && (
+                  <p className="bg-[#11121a] rounded-xl p-3 border border-white/5 text-xs text-neutral-300 italic leading-relaxed">
+                    &quot;{detailBike.notes}&quot;
+                  </p>
+                )}
+
+                <div className="grid grid-cols-2 gap-3 pt-1">
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const bike = detailBike;
+                      setDetailBike(null);
+                      triggerPass(bike);
+                    }}
+                    className="py-3 rounded-xl bg-rose-500/10 border border-rose-500/40 text-rose-300 font-bold text-xs hover:bg-rose-500 hover:text-white transition-all cursor-pointer"
+                  >
+                    Pass
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const bike = detailBike;
+                      setDetailBike(null);
+                      triggerLikeAndOffer(bike);
+                    }}
+                    className="py-3 rounded-xl bg-gradient-to-r from-[#E5B869] to-amber-400 text-black font-black text-xs hover:brightness-110 transition-all cursor-pointer"
+                  >
+                    Like &amp; Offer
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* OFFER CONSOLE MODAL (Triggered when swiping right or clicking Like) */}
       {offerBike && (
