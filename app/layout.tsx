@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { Plus_Jakarta_Sans } from "next/font/google";
 import "./globals.css";
+import RegisterServiceWorker from "./lib/RegisterServiceWorker";
 
 const plusJakarta = Plus_Jakarta_Sans({
   variable: "--font-sans",
@@ -21,7 +22,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className={`${plusJakarta.variable} font-sans h-full antialiased bg-black text-white`}>
-      <body className="min-h-full flex flex-col bg-black text-white">{children}</body>
+      <body className="min-h-full flex flex-col bg-black text-white">
+        <RegisterServiceWorker />
+        {children}
+      </body>
     </html>
   );
 }
