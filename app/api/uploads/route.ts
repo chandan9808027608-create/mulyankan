@@ -1,8 +1,7 @@
 import { promises as fs } from "fs";
 import path from "path";
 import { NextResponse } from "next/server";
-import { put } from "@vercel/blob";
-import { UPLOAD_DIR } from "@/app/lib/serverStore";
+import { SUPABASE_URL, UPLOAD_DIR, supabaseHeaders, usesSupabase } from "@/app/lib/serverStore";
 
 export const dynamic = "force-dynamic";
 
@@ -17,8 +16,23 @@ const EXT_BY_TYPE: Record<string, string> = {
   "image/heif": "heif",
 };
 
-// Hosted: photos go to Vercel Blob (set up from the Vercel dashboard). Locally: .data/uploads.
-const usesBlob = !!(process.env.BLOB_READ_WRITE_TOKEN || process.env.BLOB_STORE_ID);
+// Hosted: photos go to the public Supabase Storage bucket made by supabase/setup.sql.
+// Locally: .data/uploads.
+const BUCKET = "bike-photos";
+
+async function uploadToSupabase(name: string, file: File): Promise<string> {
+  const objectPath = `bikes/${name}`;
+  const res = await fetch(`${SUPABASE_URL}/storage/v1/object/${BUCKET}/${objectPath}`, {
+    method: "POST",
+    headers: supabaseHeaders({ "Content-Type": file.type, "Cache-Control": "31536000" }),
+    body: Buffer.from(await file.arrayBuffer()),
+  });
+  if (!res.ok) {
+    const json = await res.json().catch(() => null);
+    throw new Error(`Supabase Storage: ${json?.message || json?.error || res.status}`);
+  }
+  return `${SUPABASE_URL}/storage/v1/object/public/${BUCKET}/${objectPath}`;
+}
 
 // Accepts multipart form-data with one or more `file` fields; returns their public URLs.
 export async function POST(req: Request) {
@@ -29,7 +43,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: "No file uploaded (use form field 'file')" }, { status: 400 });
     }
 
-    if (!usesBlob) await fs.mkdir(UPLOAD_DIR, { recursive: true });
+    if (!usesSupabase) await fs.mkdir(UPLOAD_DIR, { recursive: true });
     const urls: string[] = [];
     for (const file of files) {
       const ext = EXT_BY_TYPE[file.type];
@@ -40,9 +54,8 @@ export async function POST(req: Request) {
         return NextResponse.json({ error: `${file.name} is larger than 10 MB` }, { status: 413 });
       }
       const name = `${Date.now()}_${Math.random().toString(36).substring(2, 8)}.${ext}`;
-      if (usesBlob) {
-        const blob = await put(`bikes/${name}`, file, { access: "public", contentType: file.type });
-        urls.push(blob.url);
+      if (usesSupabase) {
+        urls.push(await uploadToSupabase(name, file));
       } else {
         await fs.writeFile(path.join(UPLOAD_DIR, name), Buffer.from(await file.arrayBuffer()));
         urls.push(`/api/uploads/${name}`);

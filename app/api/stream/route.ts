@@ -1,14 +1,14 @@
-import { CHANGES_KEY, redis, storeEvents, usesRedis } from "@/app/lib/serverStore";
+import { storeEvents, supabaseRest, usesSupabase } from "@/app/lib/serverStore";
 
 export const dynamic = "force-dynamic";
 
-// How often to check Redis for changes made on other servers (hosted setup only)
-const REDIS_POLL_MS = 4000;
+// How often to check Supabase for changes made on other servers (hosted setup only)
+const POLL_MS = 4000;
 
 // Server-Sent Events: pushes a `change` event (with the changed topic) whenever
 // postings, bids, messages or staff chat are written, so every open page updates live.
 // Locally changes come from the in-process emitter; on Vercel each request can run on a
-// different server, so the stream polls the per-topic change counters in Redis instead.
+// different server, so the stream polls the per-topic change counters in Supabase instead.
 export async function GET(req: Request) {
   const encoder = new TextEncoder();
   let cleanup = () => {};
@@ -27,20 +27,20 @@ export async function GET(req: Request) {
       const heartbeat = setInterval(() => send(": ping\n\n"), 25000);
 
       let poller: ReturnType<typeof setInterval> | undefined;
-      if (usesRedis) {
+      if (usesSupabase) {
         let last: Record<string, string> | null = null;
         const poll = async () => {
           try {
-            const flat = (await redis<string[] | null>(["HGETALL", CHANGES_KEY])) || [];
+            const rows = await supabaseRest<{ topic: string; counter: number }[]>("mulyankan_changes?select=topic,counter");
             const now: Record<string, string> = {};
-            for (let i = 0; i < flat.length; i += 2) now[flat[i]] = flat[i + 1];
+            for (const row of rows) now[row.topic] = String(row.counter);
             // The page refetches everything when it connects, so the first read is just a baseline
             if (last) for (const topic of Object.keys(now)) if (now[topic] !== last[topic]) onChange(topic);
             last = now;
           } catch {}
         };
         poll();
-        poller = setInterval(poll, REDIS_POLL_MS);
+        poller = setInterval(poll, POLL_MS);
       } else {
         storeEvents.on("change", onChange);
       }

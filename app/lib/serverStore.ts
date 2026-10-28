@@ -4,8 +4,8 @@ import { EventEmitter } from "events";
 import type { BidRecord, DirectMessage } from "./dealerBidsData";
 
 // Server-only store. Starts empty; everything in it comes from real user activity
-// (postings, bids, messages, staff chat). On Vercel it lives in Upstash Redis
-// (set up from the Vercel dashboard); without those env vars it is a local JSON file.
+// (postings, bids, messages, staff chat). On Vercel it lives in Supabase (one row in
+// mulyankan_store, see supabase/setup.sql); without the Supabase env vars it is a local JSON file.
 export interface StoredPosting {
   id: string;
   name: string;
@@ -51,44 +51,44 @@ const g = globalThis as unknown as { __mulyankanEvents?: EventEmitter; __mulyank
 export const storeEvents = g.__mulyankanEvents ?? (g.__mulyankanEvents = new EventEmitter());
 storeEvents.setMaxListeners(0);
 
-// ---------- Upstash Redis (REST) ----------
-// Vercel's Upstash integration sets KV_REST_API_*; a direct Upstash setup uses UPSTASH_REDIS_REST_*.
-const REDIS_URL = process.env.KV_REST_API_URL || process.env.UPSTASH_REDIS_REST_URL;
-const REDIS_TOKEN = process.env.KV_REST_API_TOKEN || process.env.UPSTASH_REDIS_REST_TOKEN;
-export const usesRedis = !!(REDIS_URL && REDIS_TOKEN);
+// ---------- Supabase (PostgREST) ----------
+// The Vercel Supabase integration sets NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
+// The key is server-only: it bypasses row level security, so it must never reach the browser.
+export const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
+const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
+export const usesSupabase = !!(SUPABASE_URL && SUPABASE_KEY);
 
-const STORE_KEY = "mulyankan:store";
-const VERSION_KEY = "mulyankan:version";
-/** Hash of topic -> change counter; /api/stream polls it to push live updates across servers */
-export const CHANGES_KEY = "mulyankan:changes";
+/** Auth headers for Supabase. Legacy service_role keys are JWTs; new sb_secret_ keys go in apikey only. */
+export function supabaseHeaders(extra: Record<string, string> = {}): Record<string, string> {
+  const headers: Record<string, string> = { apikey: SUPABASE_KEY, ...extra };
+  if (SUPABASE_KEY.startsWith("eyJ")) headers.Authorization = `Bearer ${SUPABASE_KEY}`;
+  return headers;
+}
 
-export async function redis<T = unknown>(command: (string | number)[]): Promise<T> {
-  const res = await fetch(REDIS_URL!, {
-    method: "POST",
-    headers: { Authorization: `Bearer ${REDIS_TOKEN}`, "Content-Type": "application/json" },
-    body: JSON.stringify(command),
+export async function supabaseRest<T = unknown>(pathAndQuery: string, init: { method?: string; body?: unknown } = {}): Promise<T> {
+  const res = await fetch(`${SUPABASE_URL}/rest/v1/${pathAndQuery}`, {
+    method: init.method || "GET",
+    headers: supabaseHeaders({ "Content-Type": "application/json" }),
+    body: init.body === undefined ? undefined : JSON.stringify(init.body),
     cache: "no-store",
   });
   const json = await res.json().catch(() => null);
-  if (!res.ok || !json || json.error) throw new Error(`Redis ${command[0]} failed: ${json?.error || res.status}`);
-  return json.result as T;
+  if (!res.ok) throw new Error(`Supabase ${pathAndQuery.split("?")[0]} failed: ${json?.message || res.status}`);
+  return json as T;
 }
 
-// Write only if nobody else wrote since we read (compare version), then bump the
-// version and the changed topic's counter.
-const SAVE_IF_UNCHANGED = `
-if (redis.call('GET', KEYS[2]) or '0') ~= ARGV[1] then return 0 end
-redis.call('SET', KEYS[1], ARGV[2])
-redis.call('INCR', KEYS[2])
-redis.call('HINCRBY', KEYS[3], ARGV[3], 1)
-return 1`;
+async function loadRow(): Promise<{ store: Store; version: number }> {
+  const rows = await supabaseRest<{ data: unknown; version: number }[]>("mulyankan_store?id=eq.1&select=data,version");
+  if (!rows[0]) throw new Error("Supabase table mulyankan_store is empty. Run supabase/setup.sql.");
+  return { store: parseStore(rows[0].data), version: Number(rows[0].version) };
+}
 
 // ---------- Shared ----------
 const EMPTY = (): Store => ({ postings: [], bids: [], messages: [], staffMessages: [] });
 
-function parseStore(raw: string | null | undefined): Store {
+function parseStore(raw: unknown): Store {
   try {
-    const parsed = JSON.parse(raw || "{}");
+    const parsed = (typeof raw === "string" ? JSON.parse(raw || "{}") : raw) || {};
     return {
       postings: Array.isArray(parsed.postings) ? parsed.postings : [],
       bids: Array.isArray(parsed.bids) ? parsed.bids : [],
@@ -119,20 +119,23 @@ async function save(store: Store): Promise<void> {
 const tail = () => g.__mulyankanQueue ?? Promise.resolve();
 
 export function readStore(): Promise<Store> {
-  if (usesRedis) return redis<string | null>(["GET", STORE_KEY]).then(parseStore);
+  if (usesSupabase) return loadRow().then((r) => r.store);
   return tail().then(load, load);
 }
 
 // `topic` names what changed so clients only refetch what they need.
 export async function mutateStore<T>(topic: keyof Store, fn: (store: Store) => T | Promise<T>): Promise<T> {
-  if (usesRedis) {
-    // Optimistic retry: another server may write between our read and our save
+  if (usesSupabase) {
+    // Optimistic retry: another server may write between our read and our save.
+    // mulyankan_save only writes if the version is unchanged, and bumps the topic's counter.
     for (let attempt = 0; attempt < 8; attempt++) {
-      const [raw, version] = await redis<[string | null, string | null]>(["MGET", STORE_KEY, VERSION_KEY]);
-      const store = parseStore(raw);
+      const { store, version } = await loadRow();
       const result = await fn(store);
-      const saved = await redis<number>(["EVAL", SAVE_IF_UNCHANGED, 3, STORE_KEY, VERSION_KEY, CHANGES_KEY, version || "0", JSON.stringify(store), topic]);
-      if (saved === 1) {
+      const saved = await supabaseRest<boolean>("rpc/mulyankan_save", {
+        method: "POST",
+        body: { expected: version, new_data: store, changed_topic: topic },
+      });
+      if (saved === true) {
         storeEvents.emit("change", topic);
         return result;
       }
