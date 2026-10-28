@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useRef } from "react";
 import { getStaffApplications } from "./companyStaffData";
+import { useLiveUpdates } from "./useLiveUpdates";
 
 export interface StaffMember {
   id: string;
@@ -49,99 +50,62 @@ interface StaffGroupChatProps {
   onSwitchToSwiper?: () => void;
 }
 
-const DEFAULT_STAFF: StaffMember[] = [
-  {
-    id: "staff-1",
-    name: "Ramesh Shrestha",
-    role: "Proprietor & Lead Appraiser",
-    initials: "RS",
-    avatarBg: "bg-[#E5B869] text-black",
-    isOnline: true,
-  },
-  {
-    id: "staff-2",
-    name: "Santosh Maharjan",
-    role: "Senior Mechanic (Chassis/Engine)",
-    initials: "SM",
-    avatarBg: "bg-blue-600 text-white",
-    isOnline: true,
-  },
-  {
-    id: "staff-3",
-    name: "Sunil Thapa",
-    role: "Procurement & Yatayat Liaison",
-    initials: "ST",
-    avatarBg: "bg-emerald-600 text-white",
-    isOnline: true,
-  },
-  {
-    id: "staff-me",
-    name: "You (Staff Member)",
-    role: "Showroom Valuation Desk",
-    initials: "ME",
-    avatarBg: "bg-amber-600 text-white",
-    isOnline: true,
-  },
+// Staff chat has no accounts yet: each device gets a stable id and the name the
+// person enters the first time they post.
+const IDENTITY_KEY = "mulyankan_staff_identity";
+const AVATAR_COLORS = [
+  "bg-[#E5B869] text-black",
+  "bg-blue-600 text-white",
+  "bg-emerald-600 text-white",
+  "bg-amber-600 text-white",
+  "bg-cyan-600 text-white",
+  "bg-fuchsia-600 text-white",
 ];
 
-const INITIAL_MESSAGES: ChatMessage[] = [
-  {
-    id: "msg-1",
-    senderId: "staff-1",
-    senderName: "Ramesh Shrestha",
-    senderRole: "Proprietor & Lead Appraiser",
-    initials: "RS",
-    avatarBg: "bg-[#E5B869] text-black",
-    timestamp: "10:14 AM",
-    content: "Team, please check the fresh 2023 Yamaha R15 V4 posted from New Baneshwor. The seller claims single hand bluebook with no crashes.",
-    bikeRef: {
-      id: "r15-1",
-      name: "2023 Yamaha YZF R15 V4",
-      lotNumber: "BA 02-04 PA 8812",
-      currentBid: "NPR 3,45,000",
-      imageUrl: "/black-yamaha-r15.jpg",
-    },
-  },
-  {
-    id: "msg-2",
-    senderId: "staff-2",
-    senderName: "Santosh Maharjan",
-    senderRole: "Senior Mechanic (Chassis/Engine)",
-    initials: "SM",
-    avatarBg: "bg-blue-600 text-white",
-    timestamp: "10:18 AM",
-    content: "I zoomed in on the right crankcase and swingarm photos. The frame is straight and factory paint is intact. Front fork seals show zero weeping. Tyre has at least 70% life remaining.",
-  },
-  {
-    id: "msg-3",
-    senderId: "staff-3",
-    senderName: "Sunil Thapa",
-    senderRole: "Procurement & Yatayat Liaison",
-    initials: "ST",
-    avatarBg: "bg-emerald-600 text-white",
-    timestamp: "10:22 AM",
-    content: "Tax status is verified clean up to Ashadh 2082 at Bagmati Yatayat. Resale market at Teku for an R15 V4 in this trim is between NPR 3,85,000 to 3,95,000.",
-  },
-  {
-    id: "msg-4",
-    senderId: "staff-1",
-    senderName: "Ramesh Shrestha",
-    senderRole: "Proprietor & Lead Appraiser",
-    initials: "RS",
-    avatarBg: "bg-[#E5B869] text-black",
-    timestamp: "10:25 AM",
-    content: "Current highest standing bid is NPR 3,45,000. If we offer NPR 3,50,000 we can secure the deal with around NPR 35k profit margin after detailing.",
-    isOfferCard: true,
-    proposedOfferNpr: 350000,
-    bikeRef: {
-      id: "r15-1",
-      name: "2023 Yamaha YZF R15 V4",
-      lotNumber: "BA 02-04 PA 8812",
-      currentBid: "NPR 3,45,000",
-      imageUrl: "/black-yamaha-r15.jpg",
-    },
-  },
-];
+function loadIdentity(): { id: string; name: string } {
+  try {
+    const saved = JSON.parse(localStorage.getItem(IDENTITY_KEY) || "null");
+    if (saved?.id) return saved;
+  } catch {}
+  const fresh = { id: `dev_${Date.now()}_${Math.random().toString(36).substring(2, 8)}`, name: "" };
+  try {
+    localStorage.setItem(IDENTITY_KEY, JSON.stringify(fresh));
+  } catch {}
+  return fresh;
+}
+
+const initialsOf = (name: string) =>
+  name
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((w) => w[0]!.toUpperCase())
+    .join("") || "?";
+
+const colorFor = (key: string) => {
+  let h = 0;
+  for (const ch of key) h = (h * 31 + ch.charCodeAt(0)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+};
+
+interface StoredStaffMessage {
+  id: string;
+  senderId: string;
+  senderName: string;
+  timestamp: string;
+  content: string;
+  bikeRef?: ChatMessage["bikeRef"];
+  proposedOfferNpr?: number;
+  isOfferCard?: boolean;
+}
+
+const toChatMessage = (m: StoredStaffMessage): ChatMessage => ({
+  ...m,
+  senderRole: "Staff",
+  initials: initialsOf(m.senderName),
+  avatarBg: colorFor(m.senderId),
+  timestamp: new Date(m.timestamp).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }),
+});
 
 export const StaffGroupChat = React.memo(function StaffGroupChat({
   showroomName,
@@ -151,97 +115,113 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
   onSwitchToAuction,
   onSwitchToSwiper,
 }: StaffGroupChatProps) {
-  const [messages, setMessages] = useState<ChatMessage[]>(INITIAL_MESSAGES);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
+  const [identity, setIdentity] = useState<{ id: string; name: string }>({ id: "", name: "" });
+
+  const loadMessages = React.useCallback(async () => {
+    if (!panNumber) return;
+    try {
+      const res = await fetch(`/api/staff-chat?pan=${encodeURIComponent(panNumber)}`, { cache: "no-store" });
+      const json = await res.json();
+      if (Array.isArray(json?.data)) setMessages(json.data.map(toChatMessage));
+    } catch {}
+  }, [panNumber]);
+
+  useEffect(() => {
+    setIdentity(loadIdentity());
+    loadMessages();
+  }, [loadMessages]);
+
+  // Real-time: new staff messages from any device show up immediately
+  useLiveUpdates((topic) => {
+    if (topic === "staffMessages" || topic === "*") loadMessages();
+  });
   const [inputText, setInputText] = useState("");
   const [selectedBikeId, setSelectedBikeId] = useState<string>(availableBikes[0]?.id || "");
   const [attachBike, setAttachBike] = useState(false);
-  const [proposedPrice, setProposedPrice] = useState<string>("350000");
+  const [proposedPrice, setProposedPrice] = useState<string>("");
   const [isOfferMode, setIsOfferMode] = useState(false);
   const [bidToast, setBidToast] = useState<string | null>(null);
 
   // Dynamic Staff Roster including approved recruits
-  const [staffList, setStaffList] = useState<StaffMember[]>(() => {
-    if (typeof window === "undefined") return DEFAULT_STAFF;
+  const [staffList] = useState<StaffMember[]>(() => {
+    if (typeof window === "undefined") return [];
     try {
       const apps = getStaffApplications();
-      const approved = apps.filter((a) => a.companyPan === panNumber && a.status === "approved");
-      const mapped: StaffMember[] = approved.map((a) => ({
-        id: a.id,
-        name: a.applicantName,
-        role: a.role,
-        initials: a.initials || a.applicantName.slice(0, 2).toUpperCase(),
-        avatarBg: a.avatarBg || "bg-cyan-600 text-white",
-        isOnline: true,
-      }));
-      const existingNames = new Set(DEFAULT_STAFF.map((s) => s.name));
-      const newStaff = mapped.filter((m) => !existingNames.has(m.name));
-      return [...DEFAULT_STAFF, ...newStaff];
+      return apps
+        .filter((a) => a.companyPan === panNumber && a.status === "approved")
+        .map((a) => ({
+          id: a.id,
+          name: a.applicantName,
+          role: a.role,
+          initials: a.initials || a.applicantName.slice(0, 2).toUpperCase(),
+          avatarBg: a.avatarBg || "bg-cyan-600 text-white",
+          isOnline: false,
+        }));
     } catch {
-      return DEFAULT_STAFF;
+      return [];
     }
   });
 
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
+    // Scroll only the message list, not the whole page
+    const list = messagesEndRef.current?.parentElement;
+    list?.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
   }, [messages]);
 
   const selectedBike = availableBikes.find((b) => b.id === selectedBikeId) || availableBikes[0];
 
-  const handleSendMessage = (e?: React.FormEvent) => {
+  const handleSendMessage = async (e?: React.FormEvent) => {
     if (e) e.preventDefault();
     if (!inputText.trim() && !isOfferMode) return;
 
-    const timeString = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-    const newMsg: ChatMessage = {
-      id: "msg-" + Date.now(),
-      senderId: "staff-me",
-      senderName: "You",
-      senderRole: "Showroom Valuation Desk",
-      initials: "YOU",
-      avatarBg: "bg-amber-600 text-white",
-      timestamp: timeString,
-      content: inputText.trim() || (isOfferMode ? `Formal offer proposal submitted for ${selectedBike?.name || "the vehicle"}.` : ""),
-      ...(attachBike || isOfferMode
-        ? {
-            bikeRef: selectedBike
-              ? {
-                  id: selectedBike.id,
-                  name: selectedBike.name,
-                  lotNumber: selectedBike.lotNumber,
-                  currentBid: selectedBike.highestBid,
-                  imageUrl: selectedBike.imageUrl,
-                }
-              : undefined,
-          }
-        : {}),
-      isOfferCard: isOfferMode,
-      proposedOfferNpr: isOfferMode ? Number(proposedPrice) || undefined : undefined,
-    };
+    let me = identity;
+    if (!me.name) {
+      const entered = window.prompt("Your name (shown to your showroom team):", "")?.trim();
+      if (!entered) return;
+      me = { ...me, name: entered };
+      setIdentity(me);
+      try {
+        localStorage.setItem(IDENTITY_KEY, JSON.stringify(me));
+      } catch {}
+    }
 
-    setMessages((prev) => [...prev, newMsg]);
+    const content = inputText.trim() || (isOfferMode ? `Price idea for ${selectedBike?.name || "this bike"}.` : "");
+    const res = await fetch("/api/staff-chat", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        panNumber,
+        senderId: me.id,
+        senderName: me.name,
+        content,
+        bikeRef:
+          (attachBike || isOfferMode) && selectedBike
+            ? {
+                id: selectedBike.id,
+                name: selectedBike.name,
+                lotNumber: selectedBike.lotNumber,
+                currentBid: selectedBike.highestBid,
+                imageUrl: selectedBike.imageUrl,
+              }
+            : undefined,
+        isOfferCard: isOfferMode,
+        proposedOfferNpr: isOfferMode ? Number(proposedPrice) || undefined : undefined,
+      }),
+    }).catch(() => null);
+
+    if (!res || !res.ok) {
+      setBidToast("Message did not send. Try again.");
+      setTimeout(() => setBidToast(null), 3000);
+      return;
+    }
+
     setInputText("");
     setIsOfferMode(false);
     setAttachBike(false);
-
-    // Realistic staff auto-reply simulation after 1.5s
-    if (isOfferMode && proposedPrice) {
-      setTimeout(() => {
-        const replyTime = new Date().toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
-        const autoReply: ChatMessage = {
-          id: "msg-" + (Date.now() + 1),
-          senderId: "staff-1",
-          senderName: "Ramesh Shrestha",
-          senderRole: "Proprietor & Lead Appraiser",
-          initials: "RS",
-          avatarBg: "bg-[#E5B869] text-black",
-          timestamp: replyTime,
-          content: `Approved NPR ${Number(proposedPrice).toLocaleString()} recommendation. The numbers look profitable. Let us submit this bid to the seller.`,
-        };
-        setMessages((prev) => [...prev, autoReply]);
-      }, 1400);
-    }
+    loadMessages();
   };
 
   const handleQuickChip = (text: string, offerAmount?: number) => {
@@ -249,7 +229,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
       setProposedPrice(String(offerAmount));
       setIsOfferMode(true);
       setAttachBike(true);
-      setInputText(`I propose we submit NPR ${offerAmount.toLocaleString()} for this bike.`);
+      setInputText(`Let's offer NPR ${offerAmount.toLocaleString()} for this bike.`);
     } else {
       setInputText(text);
     }
@@ -258,7 +238,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
   const handlePlaceBidFromMessage = (bikeId: string, amountNpr: number) => {
     if (onPlaceBidFromChat) {
       onPlaceBidFromChat(bikeId, amountNpr);
-      setBidToast(`Bid of NPR ${amountNpr.toLocaleString()} dispatched to auction floor!`);
+      setBidToast(`Offer of NPR ${amountNpr.toLocaleString()} sent!`);
       setTimeout(() => setBidToast(null), 3500);
     }
   };
@@ -287,14 +267,14 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
             <div>
               <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-xl sm:text-2xl font-black uppercase text-white tracking-wide">
-                  Workshop Valuation War Room
+                  Team Chat
                 </h2>
                 <span className="px-2 py-0.5 rounded-full bg-emerald-500/20 text-emerald-400 border border-emerald-500/30 text-[10px] font-bold">
-                  Internal Staff Chat
+                  Only your team sees this
                 </span>
               </div>
               <p className="text-xs text-neutral-400">
-                Showroom: <strong className="text-white">{showroomName || "Teku Moto Recondition Hub"}</strong> • PAN: {panNumber} • Private internal discussion
+                Showroom: <strong className="text-white">{showroomName}</strong> • PAN: {panNumber}
               </p>
             </div>
           </div>
@@ -311,7 +291,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
               </svg>
-              <span>Swift Swiper</span>
+              <span>Swipe</span>
             </button>
           )}
 
@@ -321,7 +301,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
               onClick={onSwitchToAuction}
               className="px-3.5 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/15 text-neutral-300 hover:text-white font-semibold text-xs transition-colors cursor-pointer flex items-center gap-1.5"
             >
-              <span>← Live Auction Floor</span>
+              <span>← All Bikes</span>
             </button>
           )}
         </div>
@@ -335,7 +315,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
           <div className="p-4 rounded-2xl bg-[#14161e] border border-[#E5B869]/30 space-y-3 shadow-xl">
             <div className="flex items-center justify-between">
               <span className="text-[10px] font-bold uppercase tracking-wider text-[#E5B869] font-mono">
-                Vehicle In Discussion
+                Bike We Are Talking About
               </span>
               <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse" />
             </div>
@@ -358,7 +338,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
                 <div>
                   <h4 className="text-sm font-black text-white">{selectedBike.name}</h4>
                   <div className="flex items-center justify-between text-xs mt-1">
-                    <span className="text-neutral-400">Current Highest Bid:</span>
+                    <span className="text-neutral-400">Best Offer Now:</span>
                     <span className="text-[#E5B869] font-bold font-mono">{selectedBike.highestBid}</span>
                   </div>
                 </div>
@@ -366,7 +346,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
                 {/* Bike Selector Dropdown */}
                 <div className="space-y-1 pt-1 border-t border-white/10">
                   <label className="text-[10px] font-bold text-neutral-400 uppercase tracking-wider block">
-                    Change Focus Vehicle:
+                    Pick a Bike:
                   </label>
                   <select
                     value={selectedBikeId}
@@ -382,7 +362,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
                 </div>
               </div>
             ) : (
-              <p className="text-xs text-neutral-400">No vehicle selected.</p>
+              <p className="text-xs text-neutral-400">No bike picked.</p>
             )}
           </div>
 
@@ -390,13 +370,15 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
           <div className="p-4 rounded-2xl bg-[#14161e] border border-white/10 space-y-3 shadow">
             <div className="flex items-center justify-between">
               <h3 className="text-xs font-bold text-white uppercase tracking-wider">
-                Workshop Evaluators ({staffList.length})
+                Your Team ({staffList.length})
               </h3>
-              <span className="text-[10px] text-emerald-400 font-semibold flex items-center gap-1">
-                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                All Online
-              </span>
             </div>
+
+            {staffList.length === 0 && (
+              <p className="text-[11px] text-neutral-400">
+                No team members yet. Say yes to people in Hiring and they show up here.
+              </p>
+            )}
 
             <div className="space-y-2">
               {staffList.map((staff) => (
@@ -415,7 +397,6 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
                       </span>
                     </div>
                   </div>
-                  <span className="w-2 h-2 rounded-full bg-emerald-400" />
                 </div>
               ))}
             </div>
@@ -430,23 +411,28 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
               <span className="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse" />
               <div>
                 <h3 className="text-xs font-bold uppercase text-white tracking-wider">
-                  Internal Bidding &amp; Margin Consensus
+                  Team Talk
                 </h3>
                 <p className="text-[10px] text-neutral-400">
-                  Staff debate real-time mechanical integrity, refurbishment overhead, and target offer ceiling
+                  Talk with your team about which bikes to buy and how much to pay
                 </p>
               </div>
             </div>
 
             <span className="text-[10px] font-mono text-[#E5B869] bg-[#E5B869]/10 border border-[#E5B869]/30 px-2 py-0.5 rounded">
-              Teku Hub Channel
+              {showroomName} Channel
             </span>
           </div>
 
           {/* Messages Scroll Area */}
           <div className="flex-1 p-4 sm:p-5 overflow-y-auto space-y-4">
+            {messages.length === 0 && (
+              <p className="text-xs text-neutral-400 text-center pt-10">
+                No messages yet. Say hi to your team!
+              </p>
+            )}
             {messages.map((msg) => {
-              const isMe = msg.senderId === "staff-me";
+              const isMe = msg.senderId === identity.id;
 
               return (
                 <div
@@ -508,19 +494,16 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
                         }`}>
                           <div className="flex items-center justify-between">
                             <span className="text-[10px] font-bold uppercase tracking-wider font-mono">
-                              Staff Offer Proposal
+                              Price Idea
                             </span>
                             <span className="text-[10px] font-bold px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-400 border border-emerald-500/30">
-                              Ready to Dispatch
+                              Ready
                             </span>
                           </div>
 
                           <div className="flex items-baseline justify-between">
                             <span className="text-base sm:text-lg font-black tracking-wide font-sans">
                               NPR {msg.proposedOfferNpr.toLocaleString()}
-                            </span>
-                            <span className="text-[10px] font-mono opacity-80">
-                              Projected Gross: +NPR 35,000
                             </span>
                           </div>
 
@@ -534,7 +517,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
                               }}
                               className="flex-1 py-1.5 px-2 rounded-lg bg-black text-[#E5B869] border border-[#E5B869]/50 hover:bg-black/80 font-bold text-xs transition-colors cursor-pointer flex items-center justify-center gap-1.5 shadow"
                             >
-                              <span>Submit Offer to Live Auction →</span>
+                              <span>Send This Offer →</span>
                             </button>
                           </div>
                         </div>
@@ -550,14 +533,14 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
           {/* Quick Valuation Consensus Chips */}
           <div className="px-4 py-2 bg-[#101218] border-t border-white/10 flex items-center gap-2 overflow-x-auto shrink-0">
             <span className="text-[10px] font-bold uppercase tracking-wider text-neutral-500 shrink-0">
-              Quick Chips:
+              Quick Words:
             </span>
             {[
-              { label: "Suggest NPR 3,25,000", amount: 325000 },
-              { label: "Suggest NPR 3,50,000", amount: 350000 },
-              { label: "Check Engine Sound", amount: undefined },
-              { label: "Bluebook Tax Stamped?", amount: undefined },
-              { label: "Needs Minor Buffing (-NPR 5,000)", amount: undefined },
+              { label: "Good bike, let's buy", amount: undefined },
+              { label: "Too expensive", amount: undefined },
+              { label: "Check the engine sound", amount: undefined },
+              { label: "Is the tax paid?", amount: undefined },
+              { label: "Needs a little cleaning", amount: undefined },
             ].map((chip, idx) => (
               <button
                 key={idx}
@@ -587,7 +570,7 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                   </svg>
-                  <span>Propose Offer Amount</span>
+                  <span>Suggest a Price</span>
                 </button>
 
                 <button
@@ -602,13 +585,13 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
                   <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15.172 7l-6.586 6.586a2 2 0 102.828 2.828l6.414-6.586a4 4 0 00-5.656-5.656l-6.415 6.585a6 6 0 108.486 8.486L20.5 13" />
                   </svg>
-                  <span>Attach Vehicle Card</span>
+                  <span>Add Bike</span>
                 </button>
               </div>
 
               {isOfferMode && (
                 <div className="flex items-center gap-2">
-                  <span className="text-neutral-400 text-xs font-mono">Offer NPR:</span>
+                  <span className="text-neutral-400 text-xs font-mono">Price NPR:</span>
                   <input
                     type="number"
                     step="1000"
@@ -628,8 +611,8 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
                 onChange={(e) => setInputText(e.target.value)}
                 placeholder={
                   isOfferMode
-                    ? "Add valuation rationale for this offer proposal..."
-                    : "Message workshop team (e.g. Ramesh, Santosh) about vehicle appraisal..."
+                    ? "Why this price?"
+                    : "Write to your team..."
                 }
                 className="flex-1 bg-[#101118] border border-white/15 focus:border-[#E5B869] rounded-xl px-4 py-2.5 text-xs sm:text-sm text-white placeholder:text-neutral-500 focus:outline-none transition-colors"
               />

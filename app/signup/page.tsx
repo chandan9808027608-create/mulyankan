@@ -10,6 +10,7 @@ import {
   RegisteredCompany,
   StaffApplication,
 } from "../lib/companyStaffData";
+import { saveSession } from "../lib/session";
 
 interface UploadedDoc {
   type: "pan" | "company_reg" | "owner_id";
@@ -145,8 +146,14 @@ export default function SignUpPage() {
         setSuccessNotice(
           `Showroom company registered! PAN ${cleanPan} is verified. Live auction bidding unlocked.`
         );
+        saveSession({
+          role: "recondition",
+          showroomName: businessName.trim() || "Verified Showroom Hub Pvt. Ltd.",
+          panNumber: cleanPan,
+          userName: fullName.trim() || undefined,
+        });
         setTimeout(() => {
-          router.push("/?tab=dealer");
+          router.push("/");
         }, 1500);
       }, 900);
       return;
@@ -287,7 +294,7 @@ export default function SignUpPage() {
 
       {/* Main Content */}
       <main className="flex-1 flex items-center justify-center px-4 py-10">
-        <div className="w-full max-w-2xl bg-[#14161f] border border-white/10 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden">
+        <div className="w-full max-w-2xl bg-[#16171d] border border-white/10 rounded-3xl p-6 sm:p-10 shadow-2xl space-y-6 relative overflow-hidden">
           {/* Subtle gold corner accent */}
           <div className="absolute -top-16 -right-16 w-32 h-32 bg-[#E5B869]/10 rounded-full blur-2xl pointer-events-none" />
 
@@ -360,7 +367,7 @@ export default function SignUpPage() {
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
               </svg>
               <span>
-                <strong>Showroom Proprietor Mode:</strong> Requires your 9-Digit Government PAN/VAT number and registered business certificates. Once verified, you can recruit staff members and authorize them to access the War Room and live bidding floor.
+                <strong>For shop owners:</strong> you need your 9-digit PAN/VAT number. After you sign up, your workers can join your shop and use the team chat and make offers.
               </span>
             </div>
           )}
@@ -393,7 +400,7 @@ export default function SignUpPage() {
             {role === "recondition" && (
               <div className="space-y-4 p-4 rounded-2xl bg-black/40 border border-white/10">
                 <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                  <span className="font-mono text-[#E5B869] uppercase font-bold tracking-wider text-[11px]">
+                  <span className="text-[#E5B869] font-bold text-sm">
                     Company Registration &amp; Tax Documents
                   </span>
                   <span className="text-[10px] text-neutral-400 font-mono">Mandatory for Dealers</span>
@@ -410,7 +417,7 @@ export default function SignUpPage() {
                       placeholder="e.g. Teku Moto Recondition Hub Pvt. Ltd."
                       value={businessName}
                       onChange={(e) => setBusinessName(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-[#E5B869]"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white text-xs focus:outline-none focus:border-[#E5B869]"
                     />
                   </div>
 
@@ -425,7 +432,7 @@ export default function SignUpPage() {
                       placeholder="e.g. 601928471"
                       value={panNumber}
                       onChange={(e) => setPanNumber(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-[#E5B869]"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-[#E5B869]"
                     />
                   </div>
 
@@ -439,7 +446,7 @@ export default function SignUpPage() {
                       placeholder="e.g. 248190/079/080"
                       value={companyRegNumber}
                       onChange={(e) => setCompanyRegNumber(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-[#E5B869]"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-[#E5B869]"
                     />
                   </div>
 
@@ -453,7 +460,7 @@ export default function SignUpPage() {
                       placeholder="e.g. Teku, Kathmandu"
                       value={workshopHub}
                       onChange={(e) => setWorkshopHub(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-[#E5B869]"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white text-xs focus:outline-none focus:border-[#E5B869]"
                     />
                   </div>
                 </div>
@@ -530,7 +537,7 @@ export default function SignUpPage() {
             {role === "staff" && (
               <div className="space-y-4 p-4 rounded-2xl bg-black/40 border border-cyan-500/30">
                 <div className="flex items-center justify-between pb-2 border-b border-white/10">
-                  <span className="font-mono text-cyan-400 uppercase font-bold tracking-wider text-[11px]">
+                  <span className="text-[#E5B869] font-bold text-sm">
                     Company Affiliation &amp; Showroom PAN
                   </span>
                   <span className="text-[10px] text-neutral-400 font-mono">Target Showroom</span>
@@ -548,7 +555,7 @@ export default function SignUpPage() {
                       placeholder="e.g. 601928471"
                       value={staffCompanyPan}
                       onChange={(e) => handlePanChange(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
                     />
                     <button
                       type="button"
@@ -600,7 +607,7 @@ export default function SignUpPage() {
                     <select
                       value={staffRole}
                       onChange={(e) => setStaffRole(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-cyan-400 cursor-pointer"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white text-xs focus:outline-none focus:border-cyan-400 cursor-pointer"
                     >
                       <option value="Senior Mechanic (Chassis & Engine)">Senior Mechanic (Chassis & Engine)</option>
                       <option value="Valuation Appraiser & Test Rider">Valuation Appraiser & Test Rider</option>
@@ -618,7 +625,7 @@ export default function SignUpPage() {
                       placeholder="e.g. 27-01-76-04921"
                       value={citizenshipNumber}
                       onChange={(e) => setCitizenshipNumber(e.target.value)}
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-cyan-400"
                     />
                   </div>
                 </div>
@@ -637,7 +644,7 @@ export default function SignUpPage() {
                   placeholder={role === "recondition" ? "e.g. Ramesh Shrestha" : "e.g. Bikash Tamang"}
                   value={fullName}
                   onChange={(e) => setFullName(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-[#E5B869]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white text-xs focus:outline-none focus:border-[#E5B869]"
                 />
               </div>
 
@@ -651,7 +658,7 @@ export default function SignUpPage() {
                   placeholder="+977 98XXXXXXXX"
                   value={phone}
                   onChange={(e) => setPhone(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-[#E5B869]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-[#E5B869]"
                 />
               </div>
 
@@ -665,7 +672,7 @@ export default function SignUpPage() {
                   placeholder="name@domain.np"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-[#E5B869]"
+                  className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white text-xs focus:outline-none focus:border-[#E5B869]"
                 />
               </div>
 
@@ -680,7 +687,7 @@ export default function SignUpPage() {
                     placeholder="••••••••••••"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-[#E5B869]"
+                    className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white text-xs focus:outline-none focus:border-[#E5B869]"
                   />
                   <button
                     type="button"
@@ -718,7 +725,7 @@ export default function SignUpPage() {
               <button
                 type="submit"
                 disabled={isLoading}
-                className="w-full py-3.5 rounded-xl bg-gradient-to-r from-[#E5B869] to-amber-500 hover:from-[#d4a758] hover:to-amber-400 text-black font-black text-xs uppercase tracking-wider shadow-lg transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
+                className="w-full py-3.5 rounded-xl bg-[#E5B869] hover:from-[#d4a758] hover:to-amber-400 text-black font-black text-xs shadow-lg transition-all active:scale-[0.99] cursor-pointer flex items-center justify-center gap-2 disabled:opacity-50"
               >
                 {isLoading ? (
                   <>
@@ -801,7 +808,7 @@ export default function SignUpPage() {
                 onClick={() => {
                   router.push("/?tab=dealer&view=recruitment");
                 }}
-                className="w-full py-3 rounded-xl bg-gradient-to-r from-[#E5B869] to-amber-500 text-black font-extrabold text-xs tracking-wider uppercase transition-all shadow cursor-pointer flex items-center justify-center gap-2"
+                className="w-full py-3 rounded-xl bg-[#E5B869] text-black font-extrabold text-xs transition-all shadow cursor-pointer flex items-center justify-center gap-2"
               >
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />

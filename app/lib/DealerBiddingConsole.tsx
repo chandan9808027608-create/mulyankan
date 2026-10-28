@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { BidRecord, DirectMessage } from "./dealerBidsData";
+import { BidRecord, DirectMessage, timeAgo } from "./dealerBidsData";
 
 interface DealerBiddingConsoleProps {
   bikeId: string;
@@ -13,6 +13,8 @@ interface DealerBiddingConsoleProps {
   messages: DirectMessage[];
   onNewBidSubmit: (amountNpr: number, dealerName: string, location: string) => void;
   onSendMessage: (messageText: string) => void;
+  /** Pre-filled shop name (the logged-in showroom) */
+  defaultDealerName?: string;
 }
 
 export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
@@ -25,11 +27,12 @@ export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
   messages,
   onNewBidSubmit,
   onSendMessage,
+  defaultDealerName = "",
 }: DealerBiddingConsoleProps) {
   const [activeTab, setActiveTab] = useState<"bids" | "chat">("bids");
   const [bidAmount, setBidAmount] = useState<string>(String(currentHighestBidNpr + 5000));
-  const [dealerNameInput, setDealerNameInput] = useState("Koteshwor Auto Exchange");
-  const [dealerLocInput, setDealerLocInput] = useState("Koteshwor, Kathmandu");
+  const [dealerNameInput, setDealerNameInput] = useState(defaultDealerName);
+  const [dealerLocInput] = useState("Koteshwor, Kathmandu");
   const [chatInput, setChatInput] = useState("");
   const [bidSubmittedToast, setBidSubmittedToast] = useState(false);
 
@@ -69,7 +72,7 @@ export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
                 : "text-neutral-400 hover:text-white"
             }`}
           >
-            <span>Live Bid History</span>
+            <span>Offers So Far</span>
             <span className="px-1.5 py-0.2 rounded-full bg-black/20 text-[10px]">
               {bikeBids.length}
             </span>
@@ -83,7 +86,7 @@ export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
                 : "text-neutral-400 hover:text-white"
             }`}
           >
-            <span>Direct Seller Chat</span>
+            <span>Talk to Seller</span>
             <span className="w-2 h-2 rounded-full bg-emerald-400" />
           </button>
         </div>
@@ -120,13 +123,13 @@ export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
                       <div className="flex items-center gap-1.5">
                         <span className="font-semibold text-white">{b.dealerName}</span>
                         {b.verifiedDealer && (
-                          <span className="text-emerald-400 text-[10px]" title="Verified Recondition Shop">
+                          <span className="text-emerald-400 text-[10px]" title="Checked shop">
                             ✓
                           </span>
                         )}
                       </div>
                       <span className="text-[10px] text-neutral-400">
-                        {b.dealerLocation} • {b.timestamp}
+                        {b.dealerLocation} • {timeAgo(b.timestamp)}
                       </span>
                     </div>
                   </div>
@@ -140,14 +143,14 @@ export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
                         b.status === "active" ? "text-emerald-400" : "text-neutral-500"
                       }`}
                     >
-                      {b.status === "active" ? "Leading Offer" : "Outbid"}
+                      {b.status === "active" ? "Leading Offer" : b.status === "accepted" ? "Accepted" : "Outbid"}
                     </span>
                   </div>
                 </div>
               ))
             ) : (
               <div className="text-center py-6 text-xs text-neutral-500">
-                No offers yet. Be the first recondition house to place a bid!
+                No offers yet. Be the first!
               </div>
             )}
           </div>
@@ -155,7 +158,7 @@ export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
           {/* Place Higher Bid Form */}
           <form onSubmit={handleBidSubmit} className="pt-2 border-t border-white/10 space-y-2.5">
             <div className="flex items-center justify-between text-xs">
-              <span className="text-neutral-400">Your Workshop Name:</span>
+              <span className="text-neutral-400">Your Shop Name:</span>
               <input
                 type="text"
                 value={dealerNameInput}
@@ -199,7 +202,7 @@ export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
               type="submit"
               className="w-full py-2.5 px-4 rounded-xl font-bold text-xs uppercase tracking-wider text-black bg-[#E5B869] hover:bg-[#d8ab5c] active:scale-[0.99] transition-all shadow cursor-pointer"
             >
-              {bidSubmittedToast ? "✓ Offer Placed!" : "Place Verified Workshop Offer"}
+              {bidSubmittedToast ? "✓ Offer Placed!" : "Make Offer"}
             </button>
           </form>
         </div>
@@ -221,7 +224,7 @@ export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
                     }`}
                   >
                     <span className="text-[10px] text-neutral-400 mb-0.5">
-                      {m.senderName} • {m.timestamp}
+                      {m.senderName} • {timeAgo(m.timestamp)}
                     </span>
                     <div
                       className={`p-2.5 rounded-xl leading-relaxed ${
@@ -237,7 +240,7 @@ export const DealerBiddingConsole = React.memo(function DealerBiddingConsole({
               })
             ) : (
               <div className="text-center py-6 text-xs text-neutral-500">
-                Start a negotiation chat with {sellerName} ({sellerPhone}).
+                Start a chat with {sellerName}{sellerPhone ? ` (${sellerPhone})` : ""}.
               </div>
             )}
           </div>

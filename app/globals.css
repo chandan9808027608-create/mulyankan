@@ -13,6 +13,25 @@
   display: none;
 }
 
+/* Double-tap to save: a gold badge that pops and fades */
+@keyframes savepop {
+  0% { opacity: 0; transform: translate(-50%, -50%) scale(0.5); }
+  30% { opacity: 1; transform: translate(-50%, -50%) scale(1.1); }
+  100% { opacity: 0; transform: translate(-50%, -50%) scale(1.3); }
+}
+.save-pop {
+  animation: savepop 0.8s ease-out forwards;
+}
+
+/* Bottom sheets slide up */
+@keyframes sheetup {
+  from { transform: translateY(100%); }
+  to { transform: translateY(0); }
+}
+.sheet-up {
+  animation: sheetup 0.22s ease-out;
+}
+
 html,
 body {
   max-width: 100%;

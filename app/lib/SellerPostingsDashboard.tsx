@@ -1,7 +1,7 @@
 "use client";
 
 import React, { useState } from "react";
-import { BidRecord, DirectMessage } from "./dealerBidsData";
+import { BidRecord, DirectMessage, timeAgo } from "./dealerBidsData";
 import { YatayatHandoverModal } from "./YatayatHandoverModal";
 
 interface SellerListing {
@@ -17,6 +17,7 @@ interface SellerListing {
   timeLeft: string;
   imageUrl: string;
   sellerPhone: string;
+  sellerName?: string;
 }
 
 interface SellerPostingsDashboardProps {
@@ -68,7 +69,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
             ✓
           </div>
           <div>
-            <h4 className="text-sm font-bold text-white">Offer Accepted & Locked!</h4>
+            <h4 className="text-sm font-bold text-white">You Said Yes!</h4>
             <p className="text-xs text-neutral-300">
               NPR {acceptedDealToast.amount.toLocaleString()} with {acceptedDealToast.dealer}. SMS dispatch sent.
             </p>
@@ -82,11 +83,11 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
           <div className="flex items-center gap-2.5">
             <span className="w-3 h-3 rounded-full bg-emerald-400 shadow-[0_0_10px_#34d399]" />
             <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-wider text-white">
-              My Vehicle Postings &amp; Inquiries
+              My Bikes for Sale
             </h2>
           </div>
           <p className="text-xs sm:text-sm text-neutral-400 mt-1">
-            Review incoming cash offers from verified recondition workshops, negotiate, and lock Yatayat handover.
+            See which shops want your bike and how much they will pay.
           </p>
         </div>
 
@@ -95,7 +96,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
           onClick={onPostNewVehicle}
           className="px-5 py-3 rounded-xl bg-[#E5B869] hover:bg-[#d8ab5c] text-black font-bold text-xs uppercase tracking-wider shadow-[0_0_20px_rgba(229,184,105,0.3)] transition-all cursor-pointer flex items-center gap-2 shrink-0"
         >
-          <span>+ Post Another Vehicle</span>
+          <span>+ Sell Another Bike</span>
         </button>
       </div>
 
@@ -106,9 +107,9 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M13 10V3L4 14h7v7l9-11h-7z" />
             </svg>
           </div>
-          <h3 className="text-lg font-bold text-white">No active vehicle postings yet</h3>
+          <h3 className="text-lg font-bold text-white">You have no bikes for sale yet</h3>
           <p className="text-xs text-neutral-400 max-w-md mx-auto">
-            Get instant guaranteed cash bids from 150+ verified recondition houses across Kathmandu Valley in just 2 minutes.
+            Add your bike. Shops will tell you how much they will pay.
           </p>
           <button
             type="button"
@@ -158,7 +159,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                         {p.year} • {p.mileage}
                       </p>
                       <div className="flex items-center justify-between text-[11px] pt-0.5">
-                        <span className="text-neutral-500">Top Offer:</span>
+                        <span className="text-neutral-500">Best Offer:</span>
                         <span className="font-bold text-[#E5B869]">{p.highestBid}</span>
                       </div>
                     </div>
@@ -187,7 +188,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                   </div>
 
                   <div className="text-right">
-                    <span className="text-[11px] text-neutral-400 block">Highest Workshop Offer</span>
+                    <span className="text-[11px] text-neutral-400 block">Best Offer</span>
                     <span className="text-2xl sm:text-3xl font-black text-[#E5B869] tracking-tight">
                       {activePosting.highestBid}
                     </span>
@@ -200,7 +201,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                 {/* Bids List with Accept / Reject Controls */}
                 <div className="space-y-3">
                   <h4 className="text-xs font-bold uppercase tracking-wider text-white flex items-center justify-between">
-                    <span>Competing Workshop Offers</span>
+                    <span>All Offers</span>
                     <span className="text-neutral-500 text-[11px] font-normal">
                       Click &ldquo;Accept Offer&rdquo; to lock deal and exchange Yatayat documents
                     </span>
@@ -226,12 +227,12 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                                 <span className="font-bold text-sm text-white">{b.dealerName}</span>
                                 {b.verifiedDealer && (
                                   <span className="px-2 py-0.5 rounded-full bg-emerald-500/15 text-emerald-400 font-semibold text-[10px] border border-emerald-500/30">
-                                    Verified Recondition
+                                    Shop
                                   </span>
                                 )}
                               </div>
                               <p className="text-xs text-neutral-400 mt-0.5">
-                                {b.dealerLocation} • Placed {b.timestamp}
+                                {b.dealerLocation} • Placed {timeAgo(b.timestamp)}
                               </p>
                             </div>
                           </div>
@@ -241,7 +242,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                               <span className="text-lg font-black text-white font-mono block">
                                 NPR {b.amountNpr.toLocaleString()}
                               </span>
-                              <span className="text-[10px] text-neutral-400 block">Instant Cash Payout</span>
+                              <span className="text-[10px] text-neutral-400 block">Pays cash</span>
                             </div>
 
                             <div className="flex items-center gap-2">
@@ -257,7 +258,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                                   }
                                   className="px-3.5 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-black font-extrabold text-xs transition-all shadow cursor-pointer flex items-center gap-1.5"
                                 >
-                                  <span>✓ Yatayat Kit</span>
+                                  <span>✓ Next Steps</span>
                                 </button>
                               ) : (
                                 <button
@@ -265,7 +266,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                                   onClick={() => handleAccept(b)}
                                   className="px-4 py-2 rounded-xl bg-[#E5B869] hover:bg-[#d8ab5c] text-black font-extrabold text-xs transition-all shadow cursor-pointer"
                                 >
-                                  Accept Deal
+                                  Yes, Sell
                                 </button>
                               )}
                               <button
@@ -273,7 +274,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                                 onClick={() => onRejectOffer(b.bikeId, b.id)}
                                 className="px-3 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-neutral-400 hover:text-white text-xs font-semibold transition-all cursor-pointer"
                               >
-                                Decline
+                                No
                               </button>
                             </div>
                           </div>
@@ -286,7 +287,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                           Dispatching your vehicle to verified workshops in Teku, Gwarko &amp; Nayabazar...
                         </p>
                         <span className="text-[10px] text-neutral-500 block">
-                          Offers typically arrive within 10–15 minutes during business hours.
+                          Offers show up here as soon as shops send them.
                         </span>
                       </div>
                     )}
@@ -305,7 +306,7 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
                         <div key={m.id} className="text-xs space-y-0.5">
                           <div className="flex items-center justify-between text-neutral-400 text-[10px]">
                             <span className="font-semibold text-neutral-300">{m.senderName}</span>
-                            <span>{m.timestamp}</span>
+                            <span>{timeAgo(m.timestamp)}</span>
                           </div>
                           <p className="text-neutral-200 bg-white/5 p-2.5 rounded-xl border border-white/5">
                             {m.message}
@@ -326,11 +327,12 @@ export const SellerPostingsDashboard = React.memo(function SellerPostingsDashboa
         <YatayatHandoverModal
           bikeName={activePosting.name}
           lotNumber={activePosting.lotNumber}
-          sellerName="Direct Verified Seller"
+          sellerName={activePosting.sellerName || "You"}
           sellerPhone={activePosting.sellerPhone}
           buyerName={handoverModalData.dealerName}
           agreedPriceNpr={handoverModalData.amountNpr}
           isOpen={handoverModalData.isOpen}
+          forSeller
           onClose={() => setHandoverModalData(null)}
         />
       )}

@@ -6,6 +6,7 @@ import { useRouter } from "next/navigation";
 import AppNavbar from "../lib/AppNavbar";
 import AppFooter from "../lib/AppFooter";
 import HowItWorksSection from "../lib/HowItWorksSection";
+import { postListing } from "../lib/postListing";
 import { DirectPostBikeModal, DirectPostData } from "../lib/DirectPostBikeModal";
 
 export default function HowItWorksPage() {
@@ -13,13 +14,9 @@ export default function HowItWorksPage() {
   const [showDirectPostModal, setShowDirectPostModal] = useState(false);
   const [directPostToast, setDirectPostToast] = useState<string | null>(null);
 
-  const handleDirectPostSubmit = (data: DirectPostData) => {
-    if (typeof window !== "undefined") {
-      try {
-        const existing = JSON.parse(localStorage.getItem("mulyankan_user_postings") || "[]");
-        localStorage.setItem("mulyankan_user_postings", JSON.stringify([data, ...existing]));
-      } catch {}
-    }
+  const handleDirectPostSubmit = async (data: DirectPostData) => {
+    // Errors propagate to the modal, which shows them and keeps the form open
+    await postListing(data);
     setDirectPostToast(`Direct Listing for ${data.name} is now live!`);
     setTimeout(() => setDirectPostToast(null), 4000);
   };

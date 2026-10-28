@@ -1,6 +1,7 @@
 "use client";
 
 import React, { useState, useRef } from "react";
+import { uploadPhotos } from "./postListing";
 
 export interface DirectPostData {
   id: string;
@@ -41,7 +42,10 @@ export interface DirectPostData {
 interface DirectPostBikeModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (post: DirectPostData) => void;
+  /** Return false when saving failed so the modal stays open with the seller's input. */
+  onSubmit: (post: DirectPostData) => Promise<boolean | void> | boolean | void;
+  /** App look: full screen with a back button, like the rest of the app */
+  fullScreen?: boolean;
 }
 
 const PRESET_MODELS = [
@@ -53,156 +57,181 @@ const PRESET_MODELS = [
   "Honda Dio 125",
 ];
 
-const PRESET_PHOTO_OPTIONS = [
-  {
-    label: "Yamaha Sport / Dark",
-    url: "/black-yamaha-r15.jpg",
-  },
-  {
-    label: "KTM Naked / Orange",
-    url: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1200&q=85",
-  },
-  {
-    label: "Classic Cruiser / Enfield",
-    url: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=1200&q=85",
-  },
-];
+const MAX_PHOTOS = 6;
+
+interface PendingPhoto {
+  file: File;
+  previewUrl: string;
+}
 
 export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
   isOpen,
   onClose,
   onSubmit,
+  fullScreen,
 }: DirectPostBikeModalProps) {
-  const [model, setModel] = useState("Yamaha YZF R15 V4");
-  const [year, setYear] = useState("2023");
-  const [odometer, setOdometer] = useState("12000");
-  const [askingPrice, setAskingPrice] = useState("340000");
+  const [model, setModel] = useState("");
+  const [year, setYear] = useState(String(new Date().getFullYear() - 2));
+  const [odometer, setOdometer] = useState("");
+  const [askingPrice, setAskingPrice] = useState("");
   const [sellerPhone, setSellerPhone] = useState("");
   const [sellerName, setSellerName] = useState("");
-  const [location, setLocation] = useState("New Baneshwor, Kathmandu");
+  const [numberPlate, setNumberPlate] = useState("");
+  const [location, setLocation] = useState("");
   const [ownership, setOwnership] = useState("Single Hand (1st Owner)");
-  const [conditionGrade, setConditionGrade] = useState("Like New (10/10)");
+  const [conditionGrade, setConditionGrade] = useState("Excellent");
   const [taxStatus, setTaxStatus] = useState("Cleared (Fiscal Year 2081/82)");
-  const [selectedPhotoIndex, setSelectedPhotoIndex] = useState(0);
-  const [imageMode, setImageMode] = useState<"upload" | "preset" | "url">("upload");
-  const [customPhotoUrl, setCustomPhotoUrl] = useState<string | null>(null);
-  const [customPhotoName, setCustomPhotoName] = useState<string | null>(null);
+  const [imageMode, setImageMode] = useState<"upload" | "url">("upload");
+  const [photos, setPhotos] = useState<PendingPhoto[]>([]);
   const [customUrlInput, setCustomUrlInput] = useState("");
   const [dragActive, setDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
-  const [sellerNotes, setSellerNotes] = useState(
-    "Clean condition, single owner bluebook, no accidental history, ready for transfer."
-  );
+  const [sellerNotes, setSellerNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [submitError, setSubmitError] = useState<string | null>(null);
 
   if (!isOpen) return null;
 
+  const addFiles = (files: FileList | null | undefined) => {
+    if (!files) return;
+    const picked = Array.from(files)
+      .filter((f) => f.type.startsWith("image/"))
+      .map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
+    setPhotos((prev) => [...prev, ...picked].slice(0, MAX_PHOTOS));
+  };
+
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setCustomPhotoName(file.name);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCustomPhotoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    addFiles(e.target.files);
     e.target.value = "";
   };
 
   const handleFileDrop = (e: React.DragEvent) => {
     e.preventDefault();
     setDragActive(false);
-    const file = e.dataTransfer.files?.[0];
-    if (file) {
-      setCustomPhotoName(file.name);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCustomPhotoUrl(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
+    addFiles(e.dataTransfer.files);
   };
 
-  const handleFormSubmit = (e: React.FormEvent) => {
+  const removePhoto = (idx: number) => {
+    setPhotos((prev) => {
+      URL.revokeObjectURL(prev[idx].previewUrl);
+      return prev.filter((_, i) => i !== idx);
+    });
+  };
+
+  const handleFormSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    setSubmitError(null);
+
+    const remoteUrl = customUrlInput.trim();
+    if (imageMode === "upload" && photos.length === 0) {
+      setSubmitError("Add at least one photo of your bike.");
+      return;
+    }
+    if (imageMode === "url" && !/^https?:\/\//i.test(remoteUrl)) {
+      setSubmitError("Paste a full image link starting with https://");
+      return;
+    }
+
     setIsSubmitting(true);
+    let photoUrls: string[];
+    try {
+      photoUrls = imageMode === "upload" ? await uploadPhotos(photos.map((p) => p.file)) : [remoteUrl];
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Photo upload failed.");
+      setIsSubmitting(false);
+      return;
+    }
 
-    const newId = `direct-post-${Date.now()}`;
-    const formattedPrice = Number(askingPrice) || 300000;
-    const initialBid = Math.round(formattedPrice * 0.9);
-    const photoChoice = PRESET_PHOTO_OPTIONS[selectedPhotoIndex] || PRESET_PHOTO_OPTIONS[0];
-
-    const finalPhotoUrl =
-      (imageMode === "upload" && customPhotoUrl)
-        ? customPhotoUrl
-        : (imageMode === "url" && customUrlInput.trim())
-        ? customUrlInput.trim()
-        : photoChoice.url;
+    const price = Number(askingPrice) || 0;
+    const plate = numberPlate.trim().toUpperCase();
+    const phone = sellerPhone.trim().startsWith("+977") ? sellerPhone.trim() : `+977 ${sellerPhone.trim()}`;
 
     const newVehicle: DirectPostData = {
-      id: newId,
-      name: `${year} ${model}`,
+      id: `direct-post-${Date.now()}`,
+      name: `${year} ${model.trim()}`,
       year: year,
       mileage: `${Number(odometer).toLocaleString()} KM`,
-      lotNumber: "BA 02-05 PA " + Math.floor(1000 + Math.random() * 9000),
-      nepaliPlate: "बा ०२-०५ प " + Math.floor(1000 + Math.random() * 9000),
+      lotNumber: plate,
+      nepaliPlate: plate,
       province: "BAGMATI",
       ownership: ownership,
-      location: location || "Kathmandu Valley",
+      location: location.trim(),
       condition: conditionGrade,
       paperwork: taxStatus,
-      highestBid: `NPR ${initialBid.toLocaleString()}`,
-      timeLeft: "02:00:00 LEFT",
-      imageUrl: finalPhotoUrl,
-      images: [
-        { url: finalPhotoUrl, label: "1. Main Profile Photo" },
-        {
-          url: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1200&q=85",
-          label: "2. Meter & Odometer",
-        },
-        {
-          url: "https://images.unsplash.com/photo-1558980664-769d59546b3d?auto=format&fit=crop&w=1200&q=85",
-          label: "3. Engine Chamber",
-        },
-      ],
-      sellerName: sellerName.trim() || "Direct Seller (No Broker)",
-      sellerPhone: sellerPhone.trim() ? (sellerPhone.startsWith("+977") ? sellerPhone : `+977 ${sellerPhone}`) : "+977 9841-XXXXXX",
-      sellerAddress: location || "Kathmandu Valley",
-      inspectionAvailability: "Available for physical spot check in Valley",
-      bluebookStatus: `${ownership} in hand (नामसारी तयार)`,
+      // Seller's asking price is the opening figure until a dealer bids
+      highestBid: `NPR ${price.toLocaleString("en-IN")}`,
+      timeLeft: "OPEN",
+      imageUrl: photoUrls[0],
+      images: photoUrls.map((url, idx) => ({ url, label: `${idx + 1}. Seller Photo` })),
+      sellerName: sellerName.trim(),
+      sellerPhone: phone,
+      sellerAddress: location.trim(),
+      inspectionAvailability: "Contact seller to arrange inspection",
+      bluebookStatus: ownership,
       taxValidTill: taxStatus,
-      keysCount: "2 Factory Keys",
-      engineCondition: "Runs smooth and quiet",
-      tyreCondition: "75% tyre grip remaining",
-      simpleHowItRuns: "Starts immediately with push button. Quiet and reliable engine.",
-      simpleAccidentStatus: "Never dropped or crashed. 100% straight frame and wheels.",
-      simplePapersStatus: `Original Bluebook in hand. Road tax is ${taxStatus.toLowerCase()}.`,
-      simpleKeysStatus: "2 original keys included.",
-      notes: sellerNotes,
-      isTrending: true,
-      viewCount: 1,
+      keysCount: "Not stated",
+      engineCondition: `Seller-reported condition: ${conditionGrade}`,
+      tyreCondition: "Not inspected yet",
+      simpleHowItRuns: `The seller says the bike is in ${conditionGrade.toLowerCase()} condition.`,
+      simpleAccidentStatus: "Not inspected yet. Check in person before buying.",
+      simplePapersStatus: `Bluebook: ${ownership}. Road tax: ${taxStatus}.`,
+      simpleKeysStatus: "Ask the seller.",
+      notes: sellerNotes.trim() || undefined,
+      isTrending: false,
+      viewCount: 0,
       bidCount: 0,
-      hypeBadge: "DIRECT POSTING",
+      hypeBadge: "NEW LISTING",
     };
 
-    setTimeout(() => {
+    let result: boolean | void;
+    try {
+      result = await onSubmit(newVehicle);
+    } catch (err) {
+      setSubmitError(err instanceof Error ? err.message : "Could not save your listing.");
       setIsSubmitting(false);
-      onSubmit(newVehicle);
-      onClose();
-    }, 600);
+      return;
+    }
+    setIsSubmitting(false);
+    if (result === false) return;
+    photos.forEach((p) => URL.revokeObjectURL(p.previewUrl));
+    onClose();
   };
 
   return (
     <div
-      onClick={onClose}
-      className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto cursor-pointer"
+      onClick={fullScreen ? undefined : onClose}
+      className={
+        fullScreen
+          ? "fixed inset-0 z-50 flex flex-col bg-[#0d0e12]"
+          : "fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-5 bg-black/85 backdrop-blur-md overflow-y-auto cursor-pointer"
+      }
     >
       <div
         onClick={(e) => e.stopPropagation()}
-        className="relative w-full max-w-2xl rounded-3xl bg-[#14161e] border border-[#E5B869]/40 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden my-auto max-h-[92vh] flex flex-col cursor-default"
+        className={
+          fullScreen
+            ? "relative w-full max-w-2xl mx-auto flex-1 min-h-0 flex flex-col"
+            : "relative w-full max-w-2xl rounded-3xl bg-[#14161e] border border-[#E5B869]/40 shadow-[0_0_60px_rgba(0,0,0,0.9)] overflow-hidden my-auto max-h-[92vh] flex flex-col cursor-default"
+        }
       >
-        {/* Modal Header */}
+        {fullScreen ? (
+          <div className="shrink-0 flex items-center gap-3 px-4 py-3 border-b border-white/5">
+            <button
+              type="button"
+              onClick={onClose}
+              aria-label="Back"
+              className="w-10 h-10 shrink-0 rounded-xl bg-[#16171d] border border-white/10 text-white flex items-center justify-center cursor-pointer"
+            >
+              <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M15 19l-7-7 7-7" />
+              </svg>
+            </button>
+            <div className="min-w-0">
+              <h3 className="text-lg font-black text-white leading-tight">Sell a bike</h3>
+              <p className="text-xs text-neutral-500">Free • no sign-up • shops send you offers</p>
+            </div>
+          </div>
+        ) : (
         <div className="p-4 sm:p-6 border-b border-white/10 bg-[#181a24] flex items-center justify-between shrink-0">
           <div className="flex items-center gap-3">
             <div className="w-10 h-10 rounded-xl bg-[#E5B869]/20 border border-[#E5B869]/40 flex items-center justify-center text-[#E5B869]">
@@ -235,9 +264,10 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
             </svg>
           </button>
         </div>
+        )}
 
         {/* Modal Scrollable Form Body */}
-        <form onSubmit={handleFormSubmit} className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-5">
+        <form onSubmit={handleFormSubmit} className={`flex-1 overflow-y-auto p-4 sm:p-6 space-y-5 ${fullScreen ? "pb-[max(1rem,env(safe-area-inset-bottom))]" : ""}`}>
           {/* Quick Model Selector Chips */}
           <div className="space-y-2">
             <label className="text-xs font-bold uppercase tracking-wider text-neutral-300 flex items-center justify-between">
@@ -281,7 +311,7 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
                 onChange={(e) => setYear(e.target.value)}
                 className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2.5 text-xs text-white focus:outline-none focus:border-[#E5B869]"
               >
-                {[2025, 2024, 2023, 2022, 2021, 2020, 2019, 2018, 2017].map((y) => (
+                {Array.from({ length: 15 }, (_, i) => new Date().getFullYear() - i).map((y) => (
                   <option key={y} value={String(y)}>
                     {y}
                   </option>
@@ -356,6 +386,51 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
             </div>
           </div>
 
+          {/* Seller Name, Number Plate & Condition */}
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+            <div>
+              <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                Your Name <span className="text-amber-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={sellerName}
+                onChange={(e) => setSellerName(e.target.value)}
+                placeholder="e.g. Prashant Shrestha"
+                className="w-full bg-black/60 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#E5B869]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                Number Plate <span className="text-amber-400">*</span>
+              </label>
+              <input
+                type="text"
+                required
+                value={numberPlate}
+                onChange={(e) => setNumberPlate(e.target.value)}
+                placeholder="e.g. BA 02 PA 1234"
+                className="w-full bg-black/60 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white uppercase focus:outline-none focus:border-[#E5B869]"
+              />
+            </div>
+            <div>
+              <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                Condition
+              </label>
+              <select
+                value={conditionGrade}
+                onChange={(e) => setConditionGrade(e.target.value)}
+                className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E5B869]"
+              >
+                <option value="Excellent">Excellent (like new)</option>
+                <option value="Good">Good (minor scratches)</option>
+                <option value="Fair">Fair (needs some work)</option>
+                <option value="Needs Repair">Needs repair</option>
+              </select>
+            </div>
+          </div>
+
           {/* Bluebook & Tax Status */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
@@ -389,102 +464,59 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
             </div>
           </div>
 
-          {/* Vehicle Photo Upload & Selection Tabs */}
+          {/* Vehicle Photo Upload */}
           <div className="space-y-3 bg-[#10121a] p-4 rounded-2xl border border-white/10">
             <div className="flex items-center justify-between">
               <label className="text-xs font-bold uppercase tracking-wider text-neutral-300 font-mono">
-                Vehicle Photo
+                Vehicle Photos <span className="text-amber-400">*</span>
               </label>
               <div className="flex gap-1 text-[11px]">
-                <button
-                  type="button"
-                  onClick={() => setImageMode("upload")}
-                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                    imageMode === "upload"
-                      ? "bg-[#E5B869] text-black font-bold shadow"
-                      : "bg-white/5 text-neutral-400 hover:text-white"
-                  }`}
-                >
-                  Upload Photo
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setImageMode("preset")}
-                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                    imageMode === "preset"
-                      ? "bg-[#E5B869] text-black font-bold shadow"
-                      : "bg-white/5 text-neutral-400 hover:text-white"
-                  }`}
-                >
-                  Presets
-                </button>
-                <button
-                  type="button"
-                  onClick={() => setImageMode("url")}
-                  className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
-                    imageMode === "url"
-                      ? "bg-[#E5B869] text-black font-bold shadow"
-                      : "bg-white/5 text-neutral-400 hover:text-white"
-                  }`}
-                >
-                  Image URL
-                </button>
+                {(["upload", "url"] as const).map((mode) => (
+                  <button
+                    key={mode}
+                    type="button"
+                    onClick={() => setImageMode(mode)}
+                    className={`px-2.5 py-1 rounded-lg transition-all cursor-pointer ${
+                      imageMode === mode
+                        ? "bg-[#E5B869] text-black font-bold shadow"
+                        : "bg-white/5 text-neutral-400 hover:text-white"
+                    }`}
+                  >
+                    {mode === "upload" ? "Upload Photos" : "Image URL"}
+                  </button>
+                ))}
               </div>
             </div>
 
-            {/* Tab 1: Upload Photo */}
             {imageMode === "upload" && (
-              <div>
+              <div className="space-y-2.5">
                 <input
                   ref={fileInputRef}
                   type="file"
                   accept="image/*"
+                  multiple
                   onChange={handleFileUpload}
                   className="hidden"
                 />
-                {customPhotoUrl ? (
-                  <div className="rounded-xl border border-[#E5B869]/50 bg-black/60 p-3 flex items-center justify-between gap-3">
-                    <div className="flex items-center gap-3 min-w-0">
-                      {/* eslint-disable-next-line @next/next/no-img-element */}
-                      <img
-                        src={customPhotoUrl}
-                        alt="Uploaded preview"
-                        className="w-16 h-16 object-cover rounded-xl border border-[#E5B869]/40 shrink-0"
-                      />
-                      <div className="min-w-0">
-                        <p className="text-xs font-bold text-white truncate">
-                          {customPhotoName || "Bike Photo Ready"}
-                        </p>
-                        <p className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
-                          <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                          Ready to broadcast to 150+ showrooms
-                        </p>
+                {photos.length > 0 && (
+                  <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
+                    {photos.map((p, idx) => (
+                      <div key={p.previewUrl} className="relative aspect-square rounded-lg overflow-hidden border border-[#E5B869]/40">
+                        {/* eslint-disable-next-line @next/next/no-img-element */}
+                        <img src={p.previewUrl} alt={`Photo ${idx + 1}`} className="w-full h-full object-cover" />
+                        <button
+                          type="button"
+                          onClick={() => removePhoto(idx)}
+                          className="absolute top-1 right-1 w-5 h-5 rounded-full bg-black/80 text-red-400 text-[11px] leading-none flex items-center justify-center cursor-pointer"
+                          title="Remove photo"
+                        >
+                          ×
+                        </button>
                       </div>
-                    </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      <button
-                        type="button"
-                        onClick={() => fileInputRef.current?.click()}
-                        className="px-2.5 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 text-white text-[11px] font-semibold transition-colors cursor-pointer"
-                      >
-                        Change
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          setCustomPhotoUrl(null);
-                          setCustomPhotoName(null);
-                        }}
-                        className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs transition-colors cursor-pointer"
-                        title="Remove photo"
-                      >
-                        <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                        </svg>
-                      </button>
-                    </div>
+                    ))}
                   </div>
-                ) : (
+                )}
+                {photos.length < MAX_PHOTOS && (
                   <div
                     onDragOver={(e) => {
                       e.preventDefault();
@@ -505,45 +537,20 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
                       </svg>
                     </div>
                     <span className="text-xs font-semibold text-white">
-                      Click to browse or take photo
+                      {photos.length === 0 ? "Click to browse or take photos" : "Add more photos"}
                     </span>
                     <span className="text-[10px] text-neutral-400 mt-0.5">
-                      Works with phone camera or saved photo gallery (JPG, PNG, WEBP)
+                      Up to {MAX_PHOTOS} photos • JPG, PNG, WEBP • max 10 MB each
                     </span>
                   </div>
                 )}
               </div>
             )}
 
-            {/* Tab 2: Presets */}
-            {imageMode === "preset" && (
-              <div className="grid grid-cols-3 gap-2.5">
-                {PRESET_PHOTO_OPTIONS.map((opt, idx) => (
-                  <div
-                    key={idx}
-                    onClick={() => setSelectedPhotoIndex(idx)}
-                    className={`relative aspect-[16/10] rounded-xl overflow-hidden border cursor-pointer transition-all ${
-                      selectedPhotoIndex === idx
-                        ? "border-[#E5B869] ring-2 ring-[#E5B869]/60 scale-[1.02]"
-                        : "border-white/10 opacity-60 hover:opacity-100"
-                    }`}
-                  >
-                    {/* eslint-disable-next-line @next/next/no-img-element */}
-                    <img src={opt.url} alt={opt.label} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
-                    <span className="absolute bottom-1 inset-x-1 text-[10px] font-semibold text-white text-center truncate">
-                      {opt.label}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* Tab 3: Image URL */}
             {imageMode === "url" && (
               <div className="space-y-2">
                 <input
-                  type="text"
+                  type="url"
                   placeholder="Paste direct image link (https://...)"
                   value={customUrlInput}
                   onChange={(e) => setCustomUrlInput(e.target.value)}
@@ -577,6 +584,7 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
             <textarea
               rows={2}
               value={sellerNotes}
+              placeholder="e.g. Single owner, serviced regularly, no accidents."
               onChange={(e) => setSellerNotes(e.target.value)}
               className="w-full bg-black/60 border border-white/15 rounded-xl p-3 text-xs text-white focus:outline-none focus:border-[#E5B869]"
             />
@@ -584,13 +592,22 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
 
           {/* Submit Button */}
           <div className="pt-2">
+            {submitError && (
+              <p className="mb-2 text-xs text-red-400 font-semibold text-center">{submitError}</p>
+            )}
             <button
               type="submit"
               disabled={isSubmitting}
-              className="w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#E5B869] to-[#d8ab5c] text-black font-black text-sm sm:text-base uppercase tracking-wider shadow-[0_0_25px_rgba(229,184,105,0.4)] hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#E5B869]/60 disabled:opacity-75"
+              className={
+                fullScreen
+                  ? "w-full h-12 rounded-xl bg-[#E5B869] text-black font-black text-sm cursor-pointer flex items-center justify-center gap-2 disabled:opacity-60"
+                  : "w-full py-4 px-6 rounded-2xl bg-gradient-to-r from-[#E5B869] to-[#d8ab5c] text-black font-black text-sm sm:text-base uppercase tracking-wider shadow-[0_0_25px_rgba(229,184,105,0.4)] hover:brightness-110 active:scale-[0.99] transition-all cursor-pointer flex items-center justify-center gap-2 border border-[#E5B869]/60 disabled:opacity-75"
+              }
             >
               {isSubmitting ? (
-                <span>Publishing to 150+ Recondition Owners...</span>
+                <span>{imageMode === "upload" ? "Uploading photos & publishing..." : "Publishing..."}</span>
+              ) : fullScreen ? (
+                <span>Post my bike</span>
               ) : (
                 <>
                   <svg className="w-4 h-4 text-black" fill="none" viewBox="0 0 24 24" stroke="currentColor">

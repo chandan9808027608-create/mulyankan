@@ -4,12 +4,14 @@ import React, { useState, useRef, Suspense } from "react";
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { calculateVehicleValuation } from "../lib/valuationEngine";
+import { postListing, uploadPhotos } from "../lib/postListing";
 
 interface UploadedPhoto {
   id: string;
   name: string;
-  url: string;
+  url: string; // local preview (object URL) until the listing is submitted
   size: string;
+  file: File;
 }
 
 let audioCtx: AudioContext | null = null;
@@ -91,6 +93,7 @@ function ConditionReportContent() {
       name: file.name,
       url: URL.createObjectURL(file),
       size: `${(file.size / (1024 * 1024)).toFixed(1)} MB`,
+      file,
     }));
     setPhotos((prev) => [...prev, ...newItems].slice(0, 6));
     if (fileInputRef.current) {
@@ -102,66 +105,75 @@ function ConditionReportContent() {
     setPhotos((prev) => prev.filter((p) => p.id !== id));
   };
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
+    if (photos.length === 0) {
+      window.alert("Please add at least one photo of your bike.");
+      return;
+    }
     setIsSubmitting(true);
-    const newId = `user-post-${Date.now()}`;
-    setCreatedListingId(newId);
 
-    const newVehicle = {
-      id: newId,
-      name: `${bikeYearParam} ${bikeModelParam}`,
-      year: bikeYearParam,
-      mileage: odometer ? `${Number(odometer).toLocaleString()} KM` : "10,200 KM",
-      lotNumber: lotNumber ? lotNumber.toUpperCase() : "BA 02-05 PA 9921",
-      nepaliPlate: lotNumber ? lotNumber.toUpperCase() : "बा ०२-०५ प ९९२१",
-      province: "BAGMATI",
-      ownership: `${ownership} Hand Bluebook`,
-      location: sellerAddress || "Kathmandu Valley",
-      condition: condition === "excellent" ? "Like New (10/10)" : condition === "good" ? "Very Good (9/10)" : "Fair Condition",
-      paperwork: taxStatus === "cleared" ? "Tax Cleared (Fiscal Year 2081/82)" : "Tax Pending (Deductible at payout)",
-      highestBid: `NPR ${liveValuation.dealerImmediateOfferNpr.toLocaleString()}`,
-      timeLeft: "02:00:00 LEFT",
-      imageUrl: photos[0]?.url || "/black-yamaha-r15.jpg",
-      images: photos.length > 0 ? photos.map((p, idx) => ({
-        url: p.url,
-        label: `${idx + 1}. ${slotLabels[idx] || "Inspection Photo"}`
-      })) : [
-        { url: "/black-yamaha-r15.jpg", label: "1. Front Angle" },
-        { url: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1200&q=85", label: "2. Meter Console" },
-        { url: "https://images.unsplash.com/photo-1558980664-769d59546b3d?auto=format&fit=crop&w=1200&q=85", label: "3. Engine Chamber" }
-      ],
-      sellerName: "Direct Verified Seller",
-      sellerPhone: phoneNumber ? `+977 ${phoneNumber}` : "+977 9841-000000",
-      sellerAddress: sellerAddress || "Kathmandu Valley",
-      inspectionAvailability: "Available for test-ride and inspection anytime",
-      bluebookStatus: `${ownership} Hand Bluebook in hand`,
-      taxValidTill: taxStatus === "cleared" ? "Paid till Ashadh 2082" : "Tax pending",
-      keysCount: "2 Keys",
-      engineCondition: "Clean running • Well maintained",
-      tyreCondition: "Good tread remaining",
-      simpleHowItRuns: "Starts nicely on first try. Very smooth and healthy engine.",
-      simpleAccidentStatus: "No major damage or dents. Straight chassis.",
-      simplePapersStatus: taxStatus === "cleared" ? "Original Bluebook in hand. Government road tax cleared." : "Bluebook in hand.",
-      simpleKeysStatus: "Keys included.",
-      notes: notes || "Direct seller posting. Clean, verified, and open for physical spot-check.",
-      isTrending: true,
-      viewCount: 14,
-      bidCount: 1,
-      hypeBadge: "FRESH LISTING",
-    };
-
-    if (typeof window !== "undefined") {
-      try {
-        const existing = JSON.parse(localStorage.getItem("mulyankan_user_postings") || "[]");
-        localStorage.setItem("mulyankan_user_postings", JSON.stringify([newVehicle, ...existing]));
-      } catch {}
+    let photoUrls: string[];
+    try {
+      photoUrls = await uploadPhotos(photos.map((p) => p.file));
+    } catch (err) {
+      setIsSubmitting(false);
+      window.alert(err instanceof Error ? err.message : "Photo upload failed.");
+      return;
     }
 
-    setTimeout(() => {
+    const conditionLabel = condition === "excellent" ? "Like New" : condition === "good" ? "Very Good" : "Fair Condition";
+    const plate = lotNumber.trim().toUpperCase();
+
+    const newVehicle = {
+      name: `${bikeYearParam} ${bikeModelParam}`,
+      year: bikeYearParam,
+      mileage: `${Number(odometer || 0).toLocaleString()} KM`,
+      lotNumber: plate,
+      nepaliPlate: plate,
+      province: "BAGMATI",
+      ownership: `${ownership} Hand Bluebook`,
+      location: sellerAddress.trim(),
+      condition: conditionLabel,
+      paperwork: taxStatus === "cleared" ? "Tax Cleared" : "Tax Pending (Deductible at payout)",
+      highestBid: `NPR ${liveValuation.dealerImmediateOfferNpr.toLocaleString("en-IN")}`,
+      timeLeft: "OPEN",
+      imageUrl: photoUrls[0],
+      images: photoUrls.map((url, idx) => ({
+        url,
+        label: `${idx + 1}. ${slotLabels[idx] || "Inspection Photo"}`,
+      })),
+      sellerName: "Private Seller",
+      sellerPhone: `+977 ${phoneNumber.trim()}`,
+      sellerAddress: sellerAddress.trim(),
+      inspectionAvailability: "Contact seller to arrange inspection",
+      bluebookStatus: `${ownership} Hand Bluebook`,
+      taxValidTill: taxStatus === "cleared" ? "Tax cleared" : "Tax pending",
+      keysCount: "Not stated",
+      engineCondition: `Seller-reported condition: ${conditionLabel}`,
+      tyreCondition: "Not inspected yet",
+      simpleHowItRuns: `The seller says the bike is in ${conditionLabel.toLowerCase()} condition.`,
+      simpleAccidentStatus: "Not inspected yet. Check in person before buying.",
+      simplePapersStatus: taxStatus === "cleared" ? "Bluebook with seller. Road tax cleared." : "Bluebook with seller. Road tax pending.",
+      simpleKeysStatus: "Ask the seller.",
+      notes: notes.trim() || undefined,
+      isTrending: false,
+      viewCount: 0,
+      bidCount: 0,
+      hypeBadge: "NEW LISTING",
+    };
+
+    try {
+      const saved = await postListing(newVehicle);
+      setCreatedListingId(saved.id);
+    } catch (err) {
       setIsSubmitting(false);
-      setSubmissionComplete(true);
-    }, 1200);
+      window.alert(err instanceof Error ? err.message : "Could not save your listing.");
+      return;
+    }
+
+    setIsSubmitting(false);
+    setSubmissionComplete(true);
   };
 
   const slotLabels = [
@@ -482,7 +494,7 @@ function ConditionReportContent() {
                   {/* Lot / Province Number */}
                   <div className="space-y-2">
                     <label htmlFor="lot" className="block text-xs font-bold uppercase tracking-wider text-neutral-300">
-                      Lot / Plate Series <span className="text-neutral-500 font-normal">(Optional)</span>
+                      Lot / Plate Series <span className="text-amber-400">*</span>
                     </label>
                     <div className="relative group">
                       <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-neutral-400 group-focus-within:text-[#E5B869] transition-colors">
@@ -493,6 +505,7 @@ function ConditionReportContent() {
                       <input
                         id="lot"
                         type="text"
+                        required
                         value={lotNumber}
                         onChange={(e) => setLotNumber(e.target.value)}
                         placeholder="e.g. Ba 98 Pa or Prov 3 - 02"

@@ -1,6 +1,7 @@
 "use client";
 
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, useEffect } from "react";
+import { postListing, uploadPhotos } from "./postListing";
 
 export interface SwipeBike {
   id: string;
@@ -40,89 +41,6 @@ interface BikeSwipeAppraisalProps {
   onSwitchToAuctionFloor?: () => void;
 }
 
-const PRESET_SAMPLE_BIKES: SwipeBike[] = [
-  {
-    id: "swipe-1",
-    name: "2023 Yamaha MT-15 V2 BS6",
-    year: "2023",
-    mileage: "8,200 KM",
-    lotNumber: "BA 98 PA 4521",
-    nepaliPlate: "बा ९८ प ४५२१",
-    province: "BAGMATI",
-    condition: "Showroom Condition (9.5/10)",
-    paperwork: "Tax Cleared 2082/83 • Single Hand",
-    highestBid: "NPR 3,10,000",
-    sellerAskingNpr: 335000,
-    imageUrl: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1200&q=85",
-    images: [
-      { url: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1200&q=85", label: "Cockpit & USD Forks" },
-      { url: "https://images.unsplash.com/photo-1609630875171-b1321377ee65?auto=format&fit=crop&w=1200&q=85", label: "Deltabox Frame" },
-    ],
-    engineCondition: "Sealed VVA Engine • Zero Noise",
-    tyreCondition: "85% Remaining MRF Radial",
-    notes: "First owner doctor ridden. Regular servicing at Yamaha Blue Square Teku. Original spare key and tool kit intact.",
-    sellerName: "Suman Maharjan",
-  },
-  {
-    id: "swipe-2",
-    name: "2022 Royal Enfield Classic 350 Reborn",
-    year: "2022",
-    mileage: "11,500 KM",
-    lotNumber: "BA 92 PA 8820",
-    nepaliPlate: "बा ९२ प ८८२०",
-    province: "BAGMATI",
-    condition: "Well Preserved (9.0/10)",
-    paperwork: "Road Tax Paid • Bluebook In Hand",
-    highestBid: "NPR 3,65,000",
-    sellerAskingNpr: 390000,
-    imageUrl: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=1200&q=85",
-    images: [
-      { url: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=1200&q=85", label: "J-Series Engine & Dual Channel ABS" },
-      { url: "https://images.unsplash.com/photo-1558981420-87aa92103ac8?auto=format&fit=crop&w=1200&q=85", label: "Halcyon Green Tank" },
-    ],
-    engineCondition: "Smooth J-Series • Factory Oil Specs",
-    tyreCondition: "80% Ceat Zoom Plus",
-    notes: "Dual-channel ABS variant. Engine guard, sump guard, and touring mirrors installed by Royal Enfield authorized centre.",
-    sellerName: "Bikash Shrestha",
-  },
-  {
-    id: "swipe-3",
-    name: "2021 KTM Duke 250 BS6",
-    year: "2021",
-    mileage: "15,800 KM",
-    lotNumber: "BA 89 PA 1294",
-    nepaliPlate: "बा ८९ प १२९४",
-    province: "BAGMATI",
-    condition: "Aggressive Tracker (8.6/10)",
-    paperwork: "1 Year Tax Pending (Deductible)",
-    highestBid: "NPR 3,45,000",
-    sellerAskingNpr: 375000,
-    imageUrl: "https://images.unsplash.com/photo-1609630875171-b1321377ee65?auto=format&fit=crop&w=1200&q=85",
-    engineCondition: "High compression • Slipper clutch smooth",
-    tyreCondition: "70% Metzeler Sportec",
-    notes: "Original orange trellis chassis. Minor paint chips on footpeg hanger, otherwise pristine mechanical shape.",
-    sellerName: "Prashant Gurung",
-  },
-  {
-    id: "swipe-4",
-    name: "2022 Bajaj Pulsar NS 200 FI ABS",
-    year: "2022",
-    mileage: "14,200 KM",
-    lotNumber: "BA 94 PA 3302",
-    nepaliPlate: "बा ९४ प ३३०२",
-    province: "BAGMATI",
-    condition: "Good Daily Commuter (8.8/10)",
-    paperwork: "Tax Cleared Up to 2083",
-    highestBid: "NPR 2,40,000",
-    sellerAskingNpr: 260000,
-    imageUrl: "https://images.unsplash.com/photo-1558980664-769d59546b3d?auto=format&fit=crop&w=1200&q=85",
-    engineCondition: "Triple Spark DTS-i • Responsive",
-    tyreCondition: "75% MRF Zapper",
-    notes: "Single owner commuting from Bhaktapur to Teku daily. Chain sprockets replaced recently. Ready for immediate resell.",
-    sellerName: "Roshan Adhikari",
-  },
-];
-
 export default function BikeSwipeAppraisal({
   showroomName,
   panNumber,
@@ -133,12 +51,19 @@ export default function BikeSwipeAppraisal({
   onSwitchToAuctionFloor,
 }: BikeSwipeAppraisalProps) {
   // Active Deck State
-  const [deck, setDeck] = useState<SwipeBike[]>(() => {
-    if (initialBikes && initialBikes.length > 0) {
-      return initialBikes;
-    }
-    return PRESET_SAMPLE_BIKES;
-  });
+  const [deck, setDeck] = useState<SwipeBike[]>(() => initialBikes ?? []);
+
+  // Pull in listings that arrive after mount (new postings) and refresh bid amounts on existing cards
+  useEffect(() => {
+    if (!initialBikes) return;
+    setDeck((prev) => {
+      const latest = new Map(initialBikes.map((b) => [b.id, b]));
+      const known = new Set(prev.map((b) => b.id));
+      const updated = prev.map((b) => (latest.has(b.id) ? { ...b, highestBid: latest.get(b.id)!.highestBid } : b));
+      const fresh = initialBikes.filter((b) => !known.has(b.id));
+      return fresh.length > 0 ? [...updated, ...fresh] : updated;
+    });
+  }, [initialBikes]);
 
   const [currentIndex, setCurrentIndex] = useState(0);
   const [likedList, setLikedList] = useState<LikedOfferRecord[]>([]);
@@ -164,20 +89,23 @@ export default function BikeSwipeAppraisal({
 
   // Add Custom Bike Modal State
   const [showAddBikeModal, setShowAddBikeModal] = useState(false);
-  const [newBikeForm, setNewBikeForm] = useState({
+  const EMPTY_BIKE_FORM = {
     name: "",
     lotNumber: "",
-    year: "2023",
-    mileage: "10,000 KM",
+    year: String(new Date().getFullYear()),
+    mileage: "",
     province: "BAGMATI",
-    paperwork: "Tax Cleared Up to 2082",
-    condition: "Excellent Health (9.0/10)",
-    highestBid: "NPR 2,50,000",
-    sellerAskingNpr: 280000,
-    imageUrl: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1200&q=85",
-    notes: "Direct customer drop-in appraisal at showroom desk.",
-  });
-  const [imagePreviewMode, setImagePreviewMode] = useState<"preset" | "url" | "file">("file");
+    paperwork: "",
+    condition: "",
+    sellerAskingNpr: 0,
+    imageUrl: "",
+    notes: "",
+  };
+  const [newBikeForm, setNewBikeForm] = useState(EMPTY_BIKE_FORM);
+  // The picked file itself, uploaded to the server when the bike is saved
+  const pickedFileRef = useRef<File | null>(null);
+  const [isSavingBike, setIsSavingBike] = useState(false);
+  const [imagePreviewMode, setImagePreviewMode] = useState<"url" | "file">("file");
   const [uploadedFileName, setUploadedFileName] = useState<string | null>(null);
   const [fileDragActive, setFileDragActive] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -325,12 +253,12 @@ export default function BikeSwipeAppraisal({
       if (onShareToStaffChat) {
         onShareToStaffChat(offerBike, offerPriceNpr);
       }
-      setOfferSuccessToast(`Offer proposal of NPR ${offerPriceNpr.toLocaleString()} forwarded to ${showroomName} staff room!`);
+      setOfferSuccessToast(`Sent NPR ${offerPriceNpr.toLocaleString()} to your team to talk about!`);
     } else {
       if (onPlaceBid) {
         onPlaceBid(offerBike.id, offerPriceNpr);
       }
-      setOfferSuccessToast(`Offer bid of NPR ${offerPriceNpr.toLocaleString()} dispatched to live auction floor!`);
+      setOfferSuccessToast(`Your offer of NPR ${offerPriceNpr.toLocaleString()} is sent!`);
     }
 
     setOfferBike(null);
@@ -338,43 +266,105 @@ export default function BikeSwipeAppraisal({
   };
 
   // Handle Add Bike Form Submit
-  const handleAddNewBike = (e: React.FormEvent) => {
+  const handleAddNewBike = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newBikeForm.name.trim() || !newBikeForm.lotNumber.trim()) return;
+    const askingNpr = Number(newBikeForm.sellerAskingNpr) || 0;
+    if (askingNpr <= 0) {
+      setOfferSuccessToast("Enter the seller's asking price.");
+      setTimeout(() => setOfferSuccessToast(null), 3500);
+      return;
+    }
 
-    const newEntry: SwipeBike = {
-      id: `custom-${Date.now()}`,
-      name: newBikeForm.name,
-      lotNumber: newBikeForm.lotNumber,
-      year: newBikeForm.year,
-      mileage: newBikeForm.mileage,
-      province: newBikeForm.province,
-      paperwork: newBikeForm.paperwork,
-      condition: newBikeForm.condition,
-      highestBid: newBikeForm.highestBid,
-      sellerAskingNpr: Number(newBikeForm.sellerAskingNpr) || 280000,
-      imageUrl: newBikeForm.imageUrl || "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1200&q=85",
-      notes: newBikeForm.notes,
-      sellerName: "Showroom Direct Appraisal",
-    };
+    setIsSavingBike(true);
+    try {
+      let photoUrl = "";
+      if (imagePreviewMode === "file" && pickedFileRef.current) {
+        [photoUrl] = await uploadPhotos([pickedFileRef.current]);
+      } else if (imagePreviewMode === "url" && /^https?:\/\//i.test(newBikeForm.imageUrl.trim())) {
+        photoUrl = newBikeForm.imageUrl.trim();
+      }
+      if (!photoUrl) throw new Error("Add a photo of the bike (upload a file or paste an https:// link).");
 
-    // Insert next in queue so dealer can swipe it right now
-    setDeck((prev) => {
-      const copy = [...prev];
-      copy.splice(currentIndex, 0, newEntry);
-      return copy;
-    });
+      const plate = newBikeForm.lotNumber.trim().toUpperCase();
+      const askingLabel = `NPR ${askingNpr.toLocaleString("en-IN")}`;
+      const saved = await postListing({
+        name: newBikeForm.name.trim(),
+        year: newBikeForm.year,
+        mileage: newBikeForm.mileage.trim() || "Not stated",
+        lotNumber: plate,
+        nepaliPlate: plate,
+        province: newBikeForm.province,
+        ownership: "Not stated",
+        location: showroomName,
+        condition: newBikeForm.condition.trim() || "Not stated",
+        paperwork: newBikeForm.paperwork.trim() || "Not stated",
+        highestBid: askingLabel,
+        timeLeft: "OPEN",
+        imageUrl: photoUrl,
+        images: [{ url: photoUrl, label: "1. Showroom Photo" }],
+        sellerName: `Walk-in at ${showroomName}`,
+        sellerPhone: "",
+        sellerAddress: showroomName,
+        bluebookStatus: "Not stated",
+        taxValidTill: newBikeForm.paperwork.trim() || "Not stated",
+        keysCount: "Not stated",
+        engineCondition: "Not inspected yet",
+        tyreCondition: "Not inspected yet",
+        simpleHowItRuns: "Not inspected yet.",
+        simpleAccidentStatus: "Not inspected yet.",
+        simplePapersStatus: "Not stated.",
+        simpleKeysStatus: "Not stated.",
+        notes: newBikeForm.notes.trim() || undefined,
+        isTrending: false,
+        viewCount: 0,
+        bidCount: 0,
+        hypeBadge: "WALK-IN",
+      });
 
-    setShowAddBikeModal(false);
-    setActiveTab("deck");
-    setOfferSuccessToast(`Added ${newEntry.name} to active appraisal deck!`);
-    setTimeout(() => setOfferSuccessToast(null), 3500);
+      const newEntry: SwipeBike = {
+        id: saved.id,
+        name: newBikeForm.name.trim(),
+        lotNumber: plate,
+        year: newBikeForm.year,
+        mileage: newBikeForm.mileage.trim() || undefined,
+        province: newBikeForm.province,
+        paperwork: newBikeForm.paperwork.trim() || undefined,
+        condition: newBikeForm.condition.trim() || undefined,
+        highestBid: askingLabel,
+        sellerAskingNpr: askingNpr,
+        imageUrl: photoUrl,
+        notes: newBikeForm.notes.trim() || undefined,
+        sellerName: `Walk-in at ${showroomName}`,
+      };
+
+      // Insert next in queue so dealer can swipe it right now
+      setDeck((prev) => {
+        if (prev.some((b) => b.id === newEntry.id)) return prev;
+        const copy = [...prev];
+        copy.splice(currentIndex, 0, newEntry);
+        return copy;
+      });
+
+      setNewBikeForm(EMPTY_BIKE_FORM);
+      setUploadedFileName(null);
+      pickedFileRef.current = null;
+      setShowAddBikeModal(false);
+      setActiveTab("deck");
+      setOfferSuccessToast(`${newEntry.name} added!`);
+    } catch (err) {
+      setOfferSuccessToast(err instanceof Error ? err.message : "Could not save the bike.");
+    } finally {
+      setIsSavingBike(false);
+      setTimeout(() => setOfferSuccessToast(null), 3500);
+    }
   };
 
   // Handle Image Upload from File
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      pickedFileRef.current = file;
       setUploadedFileName(file.name);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -390,6 +380,7 @@ export default function BikeSwipeAppraisal({
     setFileDragActive(false);
     const file = e.dataTransfer.files?.[0];
     if (file) {
+      pickedFileRef.current = file;
       setUploadedFileName(file.name);
       const reader = new FileReader();
       reader.onloadend = () => {
@@ -419,17 +410,17 @@ export default function BikeSwipeAppraisal({
           <div className="flex items-center gap-2.5">
             <div className="w-2.5 h-2.5 rounded-full bg-[#E5B869] animate-pulse" />
             <span className="text-[11px] font-mono tracking-widest text-[#E5B869] uppercase font-bold">
-              Rapid Showroom Appraisal Deck
+              Swipe Bikes
             </span>
             <span className="text-xs px-2 py-0.5 rounded bg-black/40 text-neutral-400 border border-white/10 font-mono">
               PAN: {panNumber}
             </span>
           </div>
           <h1 className="text-2xl font-black tracking-tight text-white mt-1">
-            Swift Swipe & Valuation Desk
+            Like or Skip
           </h1>
           <p className="text-xs text-neutral-400 mt-0.5">
-            Swipe Right to Like & Offer • Swipe Left to Pass • Add custom inventory photos directly into deck
+            Swipe right if you like it. Swipe left to skip. Tap to see more.
           </p>
         </div>
 
@@ -445,7 +436,7 @@ export default function BikeSwipeAppraisal({
                   : "text-neutral-400 hover:text-white"
               }`}
             >
-              Swipe Deck ({deck.length - currentIndex > 0 ? deck.length - currentIndex : 0})
+              To Swipe ({deck.length - currentIndex > 0 ? deck.length - currentIndex : 0})
             </button>
             <button
               type="button"
@@ -456,7 +447,7 @@ export default function BikeSwipeAppraisal({
                   : "text-neutral-400 hover:text-white"
               }`}
             >
-              <span>Offers & Liked</span>
+              <span>Liked</span>
               <span className="text-[10px] px-1.5 py-0.2 rounded-full bg-black/20">{likedList.length}</span>
             </button>
             <button
@@ -468,7 +459,7 @@ export default function BikeSwipeAppraisal({
                   : "text-neutral-400 hover:text-white"
               }`}
             >
-              Passed ({passedList.length})
+              Skipped ({passedList.length})
             </button>
           </div>
 
@@ -480,7 +471,7 @@ export default function BikeSwipeAppraisal({
             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
             </svg>
-            <span>+ Add Bike / Photo</span>
+            <span>+ Add Bike</span>
           </button>
 
           {onSwitchToStaffChat && (
@@ -488,12 +479,12 @@ export default function BikeSwipeAppraisal({
               type="button"
               onClick={onSwitchToStaffChat}
               className="px-3 py-2 rounded-xl bg-[#171924] border border-cyan-500/30 hover:border-cyan-500/60 text-cyan-400 hover:text-cyan-300 text-xs font-semibold flex items-center gap-1.5 transition-all cursor-pointer"
-              title="Open Staff Room to debate values with mechanics"
+              title="Talk to your team"
             >
               <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 8h2a2 2 0 012 2v6a2 2 0 01-2 2h-2v4l-4-4H9a1.994 1.994 0 01-1.414-.586m0 0L11 14h4a2 2 0 002-2V6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2v4l.586-.586z" />
               </svg>
-              <span>Staff Chat</span>
+              <span>Team Chat</span>
             </button>
           )}
         </div>
@@ -534,7 +525,7 @@ export default function BikeSwipeAppraisal({
                 {/* Stamp Feedback Overlays */}
                 {swipeFeedback === "like" && (
                   <div className="absolute top-8 right-8 z-30 pointer-events-none border-4 border-emerald-400 text-emerald-400 px-4 py-1.5 rounded-xl font-black text-2xl tracking-wider uppercase rotate-12 shadow-2xl bg-black/60 backdrop-blur-sm animate-in fade-in duration-150">
-                    LIKE & OFFER
+                    LIKE
                   </div>
                 )}
                 {swipeFeedback === "pass" && (
@@ -560,7 +551,7 @@ export default function BikeSwipeAppraisal({
                     </span>
                     <span className="bg-emerald-500/20 backdrop-blur-md text-emerald-300 border border-emerald-500/40 px-2.5 py-1 rounded-full text-[11px] font-semibold flex items-center gap-1.5">
                       <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                      {currentBike.condition || "Inspected"}
+                      {currentBike.condition || "Not stated"}
                     </span>
                   </div>
 
@@ -568,7 +559,7 @@ export default function BikeSwipeAppraisal({
                   <div className="absolute bottom-3 left-3.5 right-3.5 flex items-end justify-between">
                     <div>
                       <span className="text-[10px] uppercase font-mono tracking-wider text-neutral-400 block">
-                        Current Live Valuation
+                        Price Now
                       </span>
                       <span className="text-2xl font-black text-white tracking-tight drop-shadow-md">
                         {currentBike.highestBid}
@@ -576,7 +567,7 @@ export default function BikeSwipeAppraisal({
                     </div>
                     {currentBike.sellerAskingNpr && (
                       <div className="text-right bg-black/60 backdrop-blur-sm px-2.5 py-1 rounded-lg border border-white/10">
-                        <span className="text-[9px] uppercase font-mono text-neutral-400 block">Seller Target</span>
+                        <span className="text-[9px] uppercase font-mono text-neutral-400 block">Seller Wants</span>
                         <span className="text-xs font-bold text-[#E5B869]">
                           NPR {currentBike.sellerAskingNpr.toLocaleString()}
                         </span>
@@ -594,7 +585,7 @@ export default function BikeSwipeAppraisal({
                     <div className="flex items-center gap-3 mt-1 text-xs text-neutral-400 font-medium">
                       <span>{currentBike.year || "2022"}</span>
                       <span>•</span>
-                      <span>{currentBike.mileage || "Low Mileage"}</span>
+                      <span>{currentBike.mileage || "KM not stated"}</span>
                       <span>•</span>
                       <span className="text-neutral-300">{currentBike.province || "BAGMATI"}</span>
                     </div>
@@ -603,15 +594,15 @@ export default function BikeSwipeAppraisal({
                   {/* Mechanical Highlights Chips */}
                   <div className="grid grid-cols-2 gap-2 text-xs">
                     <div className="bg-black/40 border border-white/10 rounded-xl p-2.5">
-                      <span className="text-[10px] text-neutral-400 block font-mono uppercase">Engine & Chassis</span>
+                      <span className="text-[10px] text-neutral-400 block font-mono uppercase">Engine</span>
                       <span className="font-semibold text-neutral-200 truncate block mt-0.5">
-                        {currentBike.engineCondition || "Clean compression, no noise"}
+                        {currentBike.engineCondition || "Not checked yet"}
                       </span>
                     </div>
                     <div className="bg-black/40 border border-white/10 rounded-xl p-2.5">
-                      <span className="text-[10px] text-neutral-400 block font-mono uppercase">Papers & Tax</span>
+                      <span className="text-[10px] text-neutral-400 block font-mono uppercase">Papers</span>
                       <span className="font-semibold text-neutral-200 truncate block mt-0.5">
-                        {currentBike.paperwork || "Bluebook in hand"}
+                        {currentBike.paperwork || "Not stated"}
                       </span>
                     </div>
                   </div>
@@ -619,7 +610,7 @@ export default function BikeSwipeAppraisal({
                   {/* Notes / Inspector Remarks */}
                   {currentBike.notes && (
                     <div className="bg-[#11121a] rounded-xl p-2.5 border border-white/5 text-xs text-neutral-300 line-clamp-2 italic">
-                      "{currentBike.notes}"
+                      &ldquo;{currentBike.notes}&rdquo;
                     </div>
                   )}
                 </div>
@@ -633,7 +624,7 @@ export default function BikeSwipeAppraisal({
                   onClick={handleUndo}
                   disabled={historyStack.length === 0}
                   className="w-12 h-12 rounded-full bg-[#191b26] border border-white/10 text-neutral-400 hover:text-amber-400 hover:border-amber-400/40 disabled:opacity-30 disabled:pointer-events-none flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95"
-                  title="Undo previous swipe"
+                  title="Go back"
                 >
                   <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 10h10a8 8 0 018 8v2M3 10l6 6m-6-6l6-6" />
@@ -645,7 +636,7 @@ export default function BikeSwipeAppraisal({
                   type="button"
                   onClick={() => triggerPass(currentBike)}
                   className="w-16 h-16 rounded-full bg-rose-500/10 border-2 border-rose-500/40 hover:border-rose-500 text-rose-400 hover:bg-rose-500 hover:text-white flex items-center justify-center transition-all cursor-pointer shadow-xl active:scale-90 group"
-                  title="Pass this bike (Swipe Left)"
+                  title="Skip"
                 >
                   <svg className="w-7 h-7 transition-transform group-hover:rotate-90" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M6 18L18 6M6 6l12 12" />
@@ -657,7 +648,7 @@ export default function BikeSwipeAppraisal({
                   type="button"
                   onClick={() => triggerLikeAndOffer(currentBike)}
                   className="w-16 h-16 rounded-full bg-gradient-to-tr from-[#E5B869] to-amber-400 text-black border-2 border-[#E5B869] hover:scale-105 flex items-center justify-center transition-all cursor-pointer shadow-[0_0_20px_rgba(229,184,105,0.4)] active:scale-90 font-black"
-                  title="Like & Offer Price (Swipe Right)"
+                  title="Like"
                 >
                   <svg className="w-8 h-8" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
@@ -670,11 +661,11 @@ export default function BikeSwipeAppraisal({
                     type="button"
                     onClick={() => {
                       onShareToStaffChat(currentBike);
-                      setOfferSuccessToast(`Shared ${currentBike.name} to staff chat!`);
+                      setOfferSuccessToast(`Sent ${currentBike.name} to your team!`);
                       setTimeout(() => setOfferSuccessToast(null), 3000);
                     }}
                     className="w-12 h-12 rounded-full bg-[#191b26] border border-cyan-500/30 text-cyan-400 hover:text-white hover:border-cyan-400 flex items-center justify-center transition-all cursor-pointer shadow-lg active:scale-95"
-                    title="Ask mechanics in Staff Chat before bidding"
+                    title="Ask your team"
                   >
                     <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
@@ -696,10 +687,10 @@ export default function BikeSwipeAppraisal({
                 </svg>
               </div>
               <h3 className="text-xl font-bold text-white tracking-tight">
-                All Current Listings Reviewed!
+                You saw every bike!
               </h3>
               <p className="text-xs text-neutral-400 leading-relaxed">
-                You have appraised every two-wheeler currently pending in the live queue.
+                New bikes will show up here when sellers add them.
                 You can reload the deck, inspect your {likedList.length} submitted offers, or upload new customer photos.
               </p>
               <div className="pt-4 flex flex-col gap-2.5">
@@ -711,21 +702,21 @@ export default function BikeSwipeAppraisal({
                   }}
                   className="w-full py-2.5 rounded-xl bg-[#E5B869] text-black font-bold text-xs hover:bg-[#d4a758] transition-all cursor-pointer"
                 >
-                  Reload Deck from Start
+                  Start Again
                 </button>
                 <button
                   type="button"
                   onClick={() => setActiveTab("liked")}
                   className="w-full py-2.5 rounded-xl bg-white/5 hover:bg-white/10 text-white font-semibold text-xs border border-white/10 transition-all cursor-pointer"
                 >
-                  View Offers & Liked ({likedList.length})
+                  See Liked Bikes ({likedList.length})
                 </button>
                 <button
                   type="button"
                   onClick={() => setShowAddBikeModal(true)}
                   className="w-full py-2.5 rounded-xl bg-cyan-500/10 hover:bg-cyan-500/20 text-cyan-300 font-semibold text-xs border border-cyan-500/30 transition-all cursor-pointer"
                 >
-                  + Add Custom Walk-in Bike
+                  + Add a Bike
                 </button>
               </div>
             </div>
@@ -738,7 +729,7 @@ export default function BikeSwipeAppraisal({
         <div className="mt-6 space-y-4">
           <div className="flex items-center justify-between">
             <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-              <span>Submitted Offers & Liked Vehicles</span>
+              <span>Bikes You Liked</span>
               <span className="text-xs px-2 py-0.5 rounded bg-[#E5B869]/20 text-[#E5B869] border border-[#E5B869]/30 font-mono">
                 {likedList.length} Units
               </span>
@@ -747,7 +738,7 @@ export default function BikeSwipeAppraisal({
 
           {likedList.length === 0 ? (
             <div className="text-center py-16 bg-[#141620] border border-white/5 rounded-2xl text-neutral-400 text-xs">
-              No liked vehicles yet. Swipe right on bikes in the Deck view to formulate offers!
+              Nothing liked yet. Swipe right on a bike you like!
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -772,17 +763,17 @@ export default function BikeSwipeAppraisal({
                           ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
                           : "bg-cyan-500/20 text-cyan-300 border border-cyan-500/30"
                       }`}>
-                        {rec.status === "submitted" ? "AUCTION DISPATCHED" : "STAFF ROOM DRAFT"}
+                        {rec.status === "submitted" ? "OFFER SENT" : "SENT TO TEAM"}
                       </span>
                     </div>
                     <h3 className="text-sm font-bold text-white truncate">{rec.bike.name}</h3>
                     <div className="flex items-center justify-between text-xs pt-1 border-t border-white/5">
                       <div>
-                        <span className="text-[9px] text-neutral-400 block">Offered Amount</span>
+                        <span className="text-[9px] text-neutral-400 block">You Offered</span>
                         <span className="font-bold text-[#E5B869]">NPR {rec.offerAmountNpr.toLocaleString()}</span>
                       </div>
                       <div className="text-right">
-                        <span className="text-[9px] text-neutral-400 block">Est. Profit Margin</span>
+                        <span className="text-[9px] text-neutral-400 block">Maybe Profit</span>
                         <span className="font-bold text-emerald-400">+NPR {rec.projectedProfitMarginNpr.toLocaleString()}</span>
                       </div>
                     </div>
@@ -798,7 +789,7 @@ export default function BikeSwipeAppraisal({
       {activeTab === "passed" && (
         <div className="mt-6 space-y-4">
           <h2 className="text-lg font-bold text-white tracking-tight flex items-center gap-2">
-            <span>Passed / Unliked Vehicles</span>
+            <span>Bikes You Skipped</span>
             <span className="text-xs px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 border border-rose-500/30 font-mono">
               {passedList.length} Units
             </span>
@@ -806,7 +797,7 @@ export default function BikeSwipeAppraisal({
 
           {passedList.length === 0 ? (
             <div className="text-center py-16 bg-[#141620] border border-white/5 rounded-2xl text-neutral-400 text-xs">
-              No passed vehicles.
+              Nothing skipped.
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -835,7 +826,7 @@ export default function BikeSwipeAppraisal({
                       }}
                       className="text-xs font-semibold text-[#E5B869] hover:underline pt-1 block cursor-pointer"
                     >
-                      Restore to Active Deck
+                      Put Back
                     </button>
                   </div>
                 </div>
@@ -857,9 +848,9 @@ export default function BikeSwipeAppraisal({
           ["Province", detailBike.province],
           ["Number Plate", detailBike.nepaliPlate],
           ["Condition", detailBike.condition],
-          ["Engine & Chassis", detailBike.engineCondition],
+          ["Engine", detailBike.engineCondition],
           ["Tyres", detailBike.tyreCondition],
-          ["Papers & Tax", detailBike.paperwork],
+          ["Papers", detailBike.paperwork],
           ["Seller", detailBike.sellerName],
         ];
         return (
@@ -988,7 +979,7 @@ export default function BikeSwipeAppraisal({
             {/* Header */}
             <div>
               <span className="text-[10px] font-mono uppercase text-[#E5B869] font-bold tracking-widest">
-                Showroom Valuation Offer
+                Make an Offer
               </span>
               <h2 className="text-xl font-black text-white tracking-tight mt-0.5">
                 Formulate Offer: {offerBike.name}
@@ -1008,7 +999,7 @@ export default function BikeSwipeAppraisal({
               />
               <div className="text-xs min-w-0">
                 <p className="font-bold text-white truncate">{offerBike.name}</p>
-                <p className="text-neutral-400 truncate">{offerBike.condition || "Inspected Condition"}</p>
+                <p className="text-neutral-400 truncate">{offerBike.condition || "Condition not stated"}</p>
                 {offerBike.sellerAskingNpr && (
                   <p className="text-[#E5B869] font-mono text-[11px] mt-0.5">
                     Seller Expected: NPR {offerBike.sellerAskingNpr.toLocaleString()}
@@ -1021,7 +1012,7 @@ export default function BikeSwipeAppraisal({
             <div className="space-y-3 bg-[#11121a] p-4 rounded-2xl border border-white/10">
               <div className="flex items-center justify-between">
                 <label className="text-xs font-bold text-neutral-300 uppercase tracking-wider font-mono">
-                  Your Proposed Offer (NPR)
+                  Your Price (NPR)
                 </label>
                 <span className="text-xs font-mono text-[#E5B869] font-bold">
                   NPR {offerPriceNpr.toLocaleString()}
@@ -1076,11 +1067,11 @@ export default function BikeSwipeAppraisal({
               {/* Showroom Margin Projection */}
               <div className="pt-2 border-t border-white/5 grid grid-cols-2 gap-2 text-[11px]">
                 <div className="text-neutral-400">
-                  <span>Est. Retail Resell: </span>
+                  <span>Maybe sell for: </span>
                   <span className="text-white font-bold">NPR {Math.round(offerPriceNpr * 1.14).toLocaleString()}</span>
                 </div>
                 <div className="text-right text-emerald-400 font-bold">
-                  <span>Net Margin: </span>
+                  <span>Maybe profit: </span>
                   <span>+NPR {Math.round(offerPriceNpr * 0.14 - 7000).toLocaleString()} (approx 12%)</span>
                 </div>
               </div>
@@ -1096,7 +1087,7 @@ export default function BikeSwipeAppraisal({
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8 12h.01M12 12h.01M16 12h.01M21 12c0 4.418-4.03 8-9 8a9.863 9.863 0 01-4.255-.949L3 20l1.395-3.72C3.512 15.042 3 13.574 3 12c0-4.418 4.03-8 9-8s9 3.582 9 8z" />
                 </svg>
-                <span>Send to Staff Chat</span>
+                <span>Ask Team First</span>
               </button>
 
               <button
@@ -1107,7 +1098,7 @@ export default function BikeSwipeAppraisal({
                 <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                   <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
                 </svg>
-                <span>Submit to Live Auction</span>
+                <span>Send Offer</span>
               </button>
             </div>
           </div>
@@ -1131,13 +1122,13 @@ export default function BikeSwipeAppraisal({
 
             <div>
               <span className="text-[10px] font-mono uppercase text-[#E5B869] font-bold tracking-widest">
-                Showroom Inventory Addition
+                New Bike
               </span>
               <h2 className="text-xl font-black text-white tracking-tight mt-0.5">
-                Add Two-Wheeler / Photo to Swipe Deck
+                Add a Bike
               </h2>
               <p className="text-xs text-neutral-400 mt-1">
-                Upload local bike photos or pick a sample to immediately appraise and place showroom offers.
+                Take a photo of the bike and fill in a few things.
               </p>
             </div>
 
@@ -1146,71 +1137,25 @@ export default function BikeSwipeAppraisal({
               <div className="space-y-2 bg-[#10121a] p-4 rounded-2xl border border-white/10">
                 <div className="flex items-center justify-between">
                   <label className="font-bold text-neutral-300 uppercase tracking-wider font-mono text-[11px]">
-                    Vehicle Image
+                    Photo
                   </label>
                   <div className="flex gap-1.5 text-[10px]">
-                    <button
-                      type="button"
-                      onClick={() => setImagePreviewMode("preset")}
-                      className={`px-2 py-0.5 rounded ${imagePreviewMode === "preset" ? "bg-[#E5B869] text-black font-bold" : "bg-white/5 text-neutral-400"}`}
-                    >
-                      Presets
-                    </button>
                     <button
                       type="button"
                       onClick={() => setImagePreviewMode("file")}
                       className={`px-2 py-0.5 rounded ${imagePreviewMode === "file" ? "bg-[#E5B869] text-black font-bold" : "bg-white/5 text-neutral-400"}`}
                     >
-                      File Upload
+                      Upload
                     </button>
                     <button
                       type="button"
                       onClick={() => setImagePreviewMode("url")}
                       className={`px-2 py-0.5 rounded ${imagePreviewMode === "url" ? "bg-[#E5B869] text-black font-bold" : "bg-white/5 text-neutral-400"}`}
                     >
-                      Image URL
+                      Link
                     </button>
                   </div>
                 </div>
-
-                {/* Preset Picker */}
-                {imagePreviewMode === "preset" && (
-                  <div className="grid grid-cols-4 gap-2 pt-1">
-                    {[
-                      {
-                        name: "Yamaha MT-15",
-                        url: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=600&q=80",
-                      },
-                      {
-                        name: "KTM RC 200",
-                        url: "https://images.unsplash.com/photo-1609630875171-b1321377ee65?auto=format&fit=crop&w=600&q=80",
-                      },
-                      {
-                        name: "Classic 350",
-                        url: "https://images.unsplash.com/photo-1558981403-c5f9899a28bc?auto=format&fit=crop&w=600&q=80",
-                      },
-                      {
-                        name: "Pulsar NS",
-                        url: "https://images.unsplash.com/photo-1558980664-769d59546b3d?auto=format&fit=crop&w=600&q=80",
-                      },
-                    ].map((sample, idx) => (
-                      <button
-                        key={idx}
-                        type="button"
-                        onClick={() => setNewBikeForm((prev) => ({ ...prev, imageUrl: sample.url }))}
-                        className={`relative rounded-xl overflow-hidden border transition-all h-16 ${
-                          newBikeForm.imageUrl === sample.url ? "border-[#E5B869] ring-2 ring-[#E5B869]/50" : "border-white/10 opacity-70 hover:opacity-100"
-                        }`}
-                      >
-                        {/* eslint-disable-next-line @next/next/no-img-element */}
-                        <img src={sample.url} alt={sample.name} className="w-full h-full object-cover" />
-                        <span className="absolute bottom-0 inset-x-0 bg-black/70 text-[9px] text-center text-white truncate px-1">
-                          {sample.name}
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                )}
 
                 {/* File Upload Picker */}
                 {imagePreviewMode === "file" && (
@@ -1235,7 +1180,7 @@ export default function BikeSwipeAppraisal({
                             <p className="text-xs font-bold text-white truncate">{uploadedFileName}</p>
                             <p className="text-[10px] text-emerald-400 flex items-center gap-1 mt-0.5">
                               <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-                              Photo successfully loaded
+                              Photo added
                             </p>
                           </div>
                         </div>
@@ -1251,13 +1196,11 @@ export default function BikeSwipeAppraisal({
                             type="button"
                             onClick={() => {
                               setUploadedFileName(null);
-                              setNewBikeForm((prev) => ({
-                                ...prev,
-                                imageUrl: "https://images.unsplash.com/photo-1568772585407-9361f9bf3a87?auto=format&fit=crop&w=1200&q=85",
-                              }));
+                              pickedFileRef.current = null;
+                              setNewBikeForm((prev) => ({ ...prev, imageUrl: "" }));
                             }}
                             className="p-1.5 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 text-xs transition-colors cursor-pointer"
-                            title="Remove file"
+                            title="Remove photo"
                           >
                             <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
@@ -1283,8 +1226,8 @@ export default function BikeSwipeAppraisal({
                         <svg className="w-7 h-7 text-[#E5B869] mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                           <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.8} d="M4 16l4.586-4.586a2 2 0 012.828 0L16 16m-2-2l1.586-1.586a2 2 0 012.828 0L20 14m-6-6h.01M6 20h12a2 2 0 002-2V6a2 2 0 00-2-2H6a2 2 0 00-2 2v12a2 2 0 002 2z" />
                         </svg>
-                        <span className="text-xs font-semibold text-white">Click or drag photo here</span>
-                        <span className="text-[10px] text-neutral-400 mt-0.5">Supports JPG, PNG, WEBP (Camera or device gallery)</span>
+                        <span className="text-xs font-semibold text-white">Tap to add a photo</span>
+                        <span className="text-[10px] text-neutral-400 mt-0.5">Use your camera or gallery</span>
                       </div>
                     )}
                   </div>
@@ -1294,7 +1237,7 @@ export default function BikeSwipeAppraisal({
                 {imagePreviewMode === "url" && (
                   <input
                     type="text"
-                    placeholder="https://images.unsplash.com/..."
+                    placeholder="https://..."
                     value={newBikeForm.imageUrl.startsWith("data:") ? "" : newBikeForm.imageUrl}
                     onChange={(e) => setNewBikeForm((prev) => ({ ...prev, imageUrl: e.target.value }))}
                     className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/10 text-white font-mono text-xs focus:outline-none focus:border-[#E5B869]"
@@ -1311,7 +1254,7 @@ export default function BikeSwipeAppraisal({
                       className="w-14 h-14 object-cover rounded-lg border border-white/20 shrink-0"
                     />
                     <span className="text-[11px] text-neutral-400 font-mono truncate">
-                      Active preview image selected
+                      Photo added
                     </span>
                   </div>
                 )}
@@ -1321,7 +1264,7 @@ export default function BikeSwipeAppraisal({
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                 <div>
                   <label className="block text-[11px] font-mono uppercase text-neutral-400 mb-1">
-                    Bike Model & Year *
+                    Bike Name *
                   </label>
                   <input
                     type="text"
@@ -1335,7 +1278,7 @@ export default function BikeSwipeAppraisal({
 
                 <div>
                   <label className="block text-[11px] font-mono uppercase text-neutral-400 mb-1">
-                    Lot / Plate Number *
+                    Number Plate *
                   </label>
                   <input
                     type="text"
@@ -1349,7 +1292,7 @@ export default function BikeSwipeAppraisal({
 
                 <div>
                   <label className="block text-[11px] font-mono uppercase text-neutral-400 mb-1">
-                    Odometer / Mileage
+                    KM Driven
                   </label>
                   <input
                     type="text"
@@ -1362,12 +1305,14 @@ export default function BikeSwipeAppraisal({
 
                 <div>
                   <label className="block text-[11px] font-mono uppercase text-neutral-400 mb-1">
-                    Seller Expected / Asking Price (NPR)
+                    Seller&apos;s Price (NPR) *
                   </label>
                   <input
                     type="number"
                     placeholder="280000"
-                    value={newBikeForm.sellerAskingNpr}
+                    required
+                    min={1}
+                    value={newBikeForm.sellerAskingNpr || ""}
                     onChange={(e) => setNewBikeForm((prev) => ({ ...prev, sellerAskingNpr: Number(e.target.value) }))}
                     className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white font-mono text-xs focus:outline-none focus:border-[#E5B869]"
                   />
@@ -1376,11 +1321,11 @@ export default function BikeSwipeAppraisal({
 
               <div>
                 <label className="block text-[11px] font-mono uppercase text-neutral-400 mb-1">
-                  Mechanical & Body Notes
+                  Notes
                 </label>
                 <textarea
                   rows={2}
-                  placeholder="Single hand owner, minor fairing scratch on left side, front tyre 80%..."
+                  placeholder="e.g. One owner, small scratch on the left side"
                   value={newBikeForm.notes}
                   onChange={(e) => setNewBikeForm((prev) => ({ ...prev, notes: e.target.value }))}
                   className="w-full px-3 py-2 rounded-xl bg-black/60 border border-white/15 text-white text-xs focus:outline-none focus:border-[#E5B869] resize-none"
@@ -1398,12 +1343,13 @@ export default function BikeSwipeAppraisal({
                 </button>
                 <button
                   type="submit"
-                  className="px-5 py-2.5 rounded-xl bg-[#E5B869] hover:bg-[#d4a758] text-black font-bold flex items-center gap-2 shadow-lg transition-all cursor-pointer"
+                  disabled={isSavingBike}
+                  className="px-5 py-2.5 rounded-xl bg-[#E5B869] hover:bg-[#d4a758] text-black font-bold flex items-center gap-2 shadow-lg transition-all cursor-pointer disabled:opacity-60"
                 >
                   <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" />
                   </svg>
-                  <span>Add to Deck Now</span>
+                  <span>{isSavingBike ? "Saving..." : "Add Bike"}</span>
                 </button>
               </div>
             </form>

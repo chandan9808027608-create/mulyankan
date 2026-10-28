@@ -4,6 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getRegisteredCompanies, getStaffApplications } from "../lib/companyStaffData";
+import { saveSession } from "../lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -152,8 +153,29 @@ export default function LoginPage() {
       setIsLoading(false);
 
       if (role === "recondition") {
-        // Authorize recondition mode and go to live auction floor
-        router.push("/?tab=dealer");
+        // Match the owner to their registered showroom, then open the vehicle feed
+        const who = username.toLowerCase().trim();
+        const companies = getRegisteredCompanies();
+        const company =
+          companies.find(
+            (c) =>
+              who &&
+              (c.email.toLowerCase() === who ||
+                c.ownerName.toLowerCase().includes(who) ||
+                c.businessName.toLowerCase().includes(who) ||
+                c.panNumber === who.replace(/[^0-9]/g, ""))
+          ) || companies[0];
+        if (!company) {
+          setErrorMessage("No registered showroom found. Please sign up your showroom first.");
+          return;
+        }
+        saveSession({
+          role: "recondition",
+          showroomName: company.businessName,
+          panNumber: company.panNumber,
+          userName: company.ownerName,
+        });
+        router.push("/");
       } else if (role === "staff") {
         const cleanPan = companyPan.trim().replace(/[^0-9]/g, "");
         const apps = getStaffApplications();
@@ -172,13 +194,15 @@ export default function LoginPage() {
             return;
           }
           // Approved staff
-          router.push("/?tab=dealer&view=staff_chat");
+          saveSession({ role: "staff", showroomName: found.companyName, panNumber: cleanPan, userName: found.applicantName });
+          router.push("/");
         } else {
           // Check if company exists
           const companies = getRegisteredCompanies();
           const comp = companies.find((c) => c.panNumber === cleanPan);
           if (comp) {
-            router.push("/?tab=dealer&view=staff_chat");
+            saveSession({ role: "staff", showroomName: comp.businessName, panNumber: cleanPan, userName: username.trim() || undefined });
+            router.push("/");
           } else {
             setErrorMessage("No registered showroom company found with this PAN number.");
           }
@@ -254,7 +278,7 @@ export default function LoginPage() {
                 {/* Tutorial Body Inside Screen */}
                 <div className="flex-1 p-3.5 flex flex-col justify-between overflow-hidden">
                   {/* Tutorial Role Switcher (3 Tabs) */}
-                  <div className="grid grid-cols-3 p-1 rounded-xl bg-black/60 border border-white/10 text-[10px] font-bold gap-0.5">
+                  <div className="grid grid-cols-3 p-1 rounded-xl bg-[#0d0e12] border border-white/10 text-[10px] font-bold gap-0.5">
                     <button
                       type="button"
                       onClick={() => {
@@ -369,7 +393,7 @@ export default function LoginPage() {
 
                     <Link
                       href={`/signup?role=${phoneTutorialRole}`}
-                      className="w-full py-2 px-3 rounded-xl bg-gradient-to-r from-[#E5B869] to-[#d8ab5c] text-black font-black text-xs uppercase tracking-wider text-center block shadow hover:brightness-110 transition-all cursor-pointer"
+                      className="w-full py-2 px-3 rounded-xl bg-[#E5B869] text-black font-black text-xs text-center block shadow hover:brightness-110 transition-all cursor-pointer"
                     >
                       <span>Create Account Now</span>
                     </Link>
@@ -407,7 +431,7 @@ export default function LoginPage() {
           {/* ========================================================= */}
           <div className="w-full max-w-[380px] space-y-3">
             {/* Top Primary Auth Box */}
-            <div className="rounded-2xl bg-[#14161e] border border-white/15 p-6 sm:p-7 shadow-2xl space-y-4 relative">
+            <div className="rounded-2xl bg-[#16171d] border border-white/15 p-6 sm:p-7 shadow-2xl space-y-4 relative">
               {/* Back / Undo Button */}
               <button
                 type="button"
@@ -444,7 +468,7 @@ export default function LoginPage() {
               </div>
 
               {/* Role Toggle (3 Options) */}
-              <div className="grid grid-cols-3 p-1 rounded-xl bg-black/60 border border-white/10 text-xs font-bold gap-0.5">
+              <div className="grid grid-cols-3 p-1 rounded-xl bg-[#0d0e12] border border-white/10 text-xs font-bold gap-0.5">
                 <button
                   type="button"
                   onClick={() => handleQuickFill("recondition")}
@@ -501,7 +525,7 @@ export default function LoginPage() {
               {/* Input Form */}
               <form onSubmit={handleLoginSubmit} className="space-y-3 pt-1">
                 <div>
-                  <label className="block text-[11px] font-mono text-neutral-400 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1">
                     {role === "staff" ? "Staff Email / Name" : "Email / Username"}
                   </label>
                   <input
@@ -516,14 +540,14 @@ export default function LoginPage() {
                         ? "bikash.tamang@gmail.com"
                         : "prashant.seller@gmail.com"
                     }
-                    className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder:text-neutral-600 focus:outline-none focus:border-[#E5B869]"
+                    className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white text-xs placeholder:text-neutral-600 focus:outline-none focus:border-[#E5B869]"
                   />
                 </div>
 
                 {/* Company PAN for Staff login */}
                 {role === "staff" && (
                   <div>
-                    <label className="block text-[11px] font-mono text-neutral-400 uppercase mb-1">
+                    <label className="block text-xs font-semibold text-neutral-400 mb-1">
                       Showroom Company PAN
                     </label>
                     <input
@@ -533,13 +557,13 @@ export default function LoginPage() {
                       value={companyPan}
                       onChange={(e) => setCompanyPan(e.target.value)}
                       placeholder="e.g. 601928471"
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/10 text-white font-mono text-xs placeholder:text-neutral-600 focus:outline-none focus:border-[#E5B869]"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white font-mono text-xs placeholder:text-neutral-600 focus:outline-none focus:border-[#E5B869]"
                     />
                   </div>
                 )}
 
                 <div>
-                  <label className="block text-[11px] font-mono text-neutral-400 uppercase mb-1">
+                  <label className="block text-xs font-semibold text-neutral-400 mb-1">
                     Password
                   </label>
                   <div className="relative">
@@ -549,7 +573,7 @@ export default function LoginPage() {
                       value={password}
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="••••••••••••"
-                      className="w-full px-3 py-2.5 rounded-xl bg-black/60 border border-white/10 text-white text-xs placeholder:text-neutral-600 focus:outline-none focus:border-[#E5B869]"
+                      className="w-full px-3 py-2.5 rounded-xl bg-[#0d0e12] border border-white/10 text-white text-xs placeholder:text-neutral-600 focus:outline-none focus:border-[#E5B869]"
                     />
                     <button
                       type="button"
@@ -570,7 +594,7 @@ export default function LoginPage() {
                 <button
                   type="submit"
                   disabled={isLoading}
-                  className="w-full py-3 rounded-xl bg-gradient-to-r from-[#E5B869] to-amber-500 text-black font-black text-xs uppercase tracking-wider shadow hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
+                  className="w-full py-3 rounded-xl bg-[#E5B869] text-black font-black text-xs shadow hover:brightness-110 active:scale-[0.98] transition-all cursor-pointer flex items-center justify-center gap-2 mt-2 disabled:opacity-50"
                 >
                   {isLoading ? (
                     <>
@@ -615,7 +639,7 @@ export default function LoginPage() {
             </div>
 
             {/* Bottom Card: Switch to Sign Up */}
-            <div className="rounded-2xl bg-[#14161e] border border-white/10 p-4 text-center text-xs text-neutral-400">
+            <div className="rounded-2xl bg-[#16171d] border border-white/10 p-4 text-center text-xs text-neutral-400">
               Don&apos;t have an account?{" "}
               <Link
                 href={`/signup?role=${role}`}
