@@ -54,8 +54,20 @@ storeEvents.setMaxListeners(0);
 // ---------- Supabase (PostgREST) ----------
 // The Vercel Supabase integration sets NEXT_PUBLIC_SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY.
 // The key is server-only: it bypasses row level security, so it must never reach the browser.
-export const SUPABASE_URL = (process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || "").replace(/\/$/, "");
-const SUPABASE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_SECRET_KEY || "";
+// Vercel's "connect store" screen may add a prefix (e.g. STORAGE_SUPABASE_URL), so match by suffix.
+const envEndingWith = (...suffixes: string[]) => {
+  for (const suffix of suffixes) {
+    const exact = process.env[suffix];
+    if (exact) return exact;
+    const key = Object.keys(process.env).find((k) => k.endsWith(`_${suffix}`) && process.env[k]);
+    if (key) return process.env[key]!;
+  }
+  return "";
+};
+export const SUPABASE_URL = envEndingWith("SUPABASE_URL", "NEXT_PUBLIC_SUPABASE_URL").replace(/\/$/, "");
+const SUPABASE_KEY = envEndingWith("SUPABASE_SERVICE_ROLE_KEY", "SUPABASE_SECRET_KEY");
+/** Names (never values) of Supabase-related env vars, for /api/health */
+export const supabaseEnvNames = () => Object.keys(process.env).filter((k) => k.includes("SUPABASE")).sort();
 export const usesSupabase = !!(SUPABASE_URL && SUPABASE_KEY);
 
 /** Auth headers for Supabase. Legacy service_role keys are JWTs; new sb_secret_ keys go in apikey only. */
