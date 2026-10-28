@@ -2,8 +2,8 @@
 
 import { useSyncExternalStore } from "react";
 
-// True when the site runs inside the Android app (PWABuilder / Trusted Web Activity)
-// or as an installed home-screen app, false in a normal browser tab.
+// True when the site runs inside the Android app (our WebView app, a Trusted Web
+// Activity) or as an installed home-screen app, false in a normal browser tab.
 // Once detected it is remembered for the tab, because the Android referrer is
 // only present on the first page load.
 const KEY = "mulyankan_app_mode";
@@ -18,7 +18,9 @@ function detect(): boolean {
       window.matchMedia("(display-mode: fullscreen)").matches ||
       (navigator as Navigator & { standalone?: boolean }).standalone === true;
     const fromAndroidApp = document.referrer.startsWith("android-app://");
-    const isApp = fromUrl || standalone || fromAndroidApp;
+    // Our Android WebView app adds this to its user agent
+    const fromWebViewApp = navigator.userAgent.includes("MulyankanApp");
+    const isApp = fromUrl || standalone || fromAndroidApp || fromWebViewApp;
     if (isApp) sessionStorage.setItem(KEY, "1");
     return isApp;
   } catch {

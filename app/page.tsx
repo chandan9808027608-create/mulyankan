@@ -25,7 +25,7 @@ import AppNavbar from "./lib/AppNavbar";
 import AppFooter from "./lib/AppFooter";
 import LiveMarketplaceSection from "./lib/LiveMarketplaceSection";
 import { SellerApp, SellerView } from "./lib/SellerApp";
-import { useAppLayout } from "./lib/appMode";
+import { useAppLayout, useIsApp } from "./lib/appMode";
 import { DesktopShopDashboard, DesktopShopView } from "./lib/DesktopShopDashboard";
 import { DealerBiddingConsole } from "./lib/DealerBiddingConsole";
 
@@ -259,6 +259,7 @@ export default function MulyankanApp() {
   const [activeTab, setActiveTab] = useState<"seller" | "dealer" | "seller_dashboard">("seller");
   // Android app and phone browsers use the app layout; desktop browsers keep the website layout
   const appLayout = useAppLayout();
+  const isApp = useIsApp();
   const sellerInApp = appLayout && activeTab !== "dealer";
   const [sellerAppView, setSellerAppView] = useState<Exclude<SellerView, "bikes">>("home");
 
@@ -702,6 +703,11 @@ export default function MulyankanApp() {
   const logOutWorkshop = () => {
     clearSession();
     setIsReconditionVerified(false);
+    // The Android app starts on the login page, so logging out goes back there
+    if (isApp) {
+      router.push("/login");
+      return;
+    }
     navigateTo("seller");
   };
 
