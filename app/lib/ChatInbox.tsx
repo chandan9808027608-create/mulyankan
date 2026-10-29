@@ -392,7 +392,8 @@ function Conversation({
             </span>
           )}
           <div className={`max-w-[78%] space-y-1 ${m.mine ? "items-end" : "items-start"} flex flex-col`}>
-            {!m.mine && <span className="text-[10px] text-neutral-500 px-1">{m.name}</span>}
+            {/* Sender's name above every message, including your own */}
+            <span className={`text-[11px] font-semibold px-1 ${m.mine ? "text-[#E5B869]" : "text-neutral-400"}`}>{m.name}</span>
             {m.bikeRef && (
               <button
                 type="button"

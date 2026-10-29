@@ -301,6 +301,8 @@ function SellerChat({ thread, sellerName, onSend }: { thread: DirectMessage[]; s
           const mine = m.sender === "dealer";
           return (
             <div key={m.id} className={`flex flex-col max-w-[80%] ${mine ? "ml-auto items-end" : "items-start"}`}>
+              {/* Sender's name above every message, including your own */}
+              <span className={`text-[11px] font-semibold px-1 ${mine ? "text-[#E5B869]" : "text-neutral-400"}`}>{m.senderName}</span>
               <p className={`px-3.5 py-2 rounded-2xl text-sm break-words ${mine ? "bg-[#E5B869] text-black rounded-br-md" : "bg-white/10 text-white rounded-bl-md"}`}>
                 {m.message}
               </p>

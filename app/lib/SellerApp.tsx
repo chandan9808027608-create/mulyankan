@@ -569,7 +569,8 @@ function BikeChat({ messages, onSend }: { messages: DirectMessage[]; onSend: (te
           const mine = m.sender === "seller";
           return (
             <div key={m.id} className={`flex flex-col max-w-[80%] ${mine ? "ml-auto items-end" : "items-start"}`}>
-              {!mine && <span className="text-[10px] text-neutral-500 px-1">{m.senderName}</span>}
+              {/* Sender's name above every message, including your own */}
+              <span className={`text-[11px] font-semibold px-1 ${mine ? "text-[#E5B869]" : "text-neutral-400"}`}>{m.senderName}</span>
               <p className={`px-3.5 py-2 rounded-2xl text-sm break-words ${mine ? "bg-[#E5B869] text-black rounded-br-md" : "bg-white/10 text-white rounded-bl-md"}`}>
                 {m.message}
               </p>
