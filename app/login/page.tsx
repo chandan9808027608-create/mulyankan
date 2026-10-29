@@ -170,9 +170,9 @@ export default function LoginPage() {
                 c.ownerName.toLowerCase().includes(who) ||
                 c.businessName.toLowerCase().includes(who) ||
                 c.panNumber === who.replace(/[^0-9]/g, ""))
-          ) || companies[0];
+          );
         if (!company) {
-          setErrorMessage("No registered showroom found. Please sign up your showroom first.");
+          setErrorMessage("No showroom found with that email, owner name or PAN. Please sign up your showroom first.");
           return;
         }
         saveSession({
@@ -185,35 +185,40 @@ export default function LoginPage() {
         router.push("/");
       } else if (role === "staff") {
         const cleanPan = companyPan.trim().replace(/[^0-9]/g, "");
-        const apps = getStaffApplications();
-        const found = apps.find(
-          (a) =>
-            a.companyPan === cleanPan &&
-            (a.email.toLowerCase() === username.toLowerCase().trim() ||
-              a.applicantName.toLowerCase().includes(username.toLowerCase().trim()))
+        const who = username.toLowerCase().trim();
+        const matches = getStaffApplications().filter(
+          (a) => a.companyPan === cleanPan && who && (a.email.toLowerCase() === who || a.applicantName.toLowerCase().includes(who))
         );
+        // Someone who was removed and applied again: their newest application counts
+        const found =
+          matches.find((a) => a.status === "approved") || matches.find((a) => a.status === "pending_owner_approval") || matches[0];
 
-        if (found) {
-          if (found.status === "pending_owner_approval") {
-            setPendingNotice(
-              `Application Pending Approval: Your account for ${found.applicantName} (${found.role}) has been submitted to the proprietor of ${found.companyName} (PAN: ${cleanPan}). You will receive access as soon as the showroom owner approves your account.`
-            );
-            return;
-          }
-          // Approved staff
-          saveSession({ role: "staff", showroomName: found.companyName, panNumber: cleanPan, userName: found.applicantName, phone: found.phone });
-          router.push("/");
-        } else {
-          // Check if company exists
-          const companies = getRegisteredCompanies();
-          const comp = companies.find((c) => c.panNumber === cleanPan);
-          if (comp) {
-            saveSession({ role: "staff", showroomName: comp.businessName, panNumber: cleanPan, userName: username.trim() || undefined, phone: comp.phone });
-            router.push("/");
-          } else {
-            setErrorMessage("No registered showroom company found with this PAN number.");
-          }
+        if (!found) {
+          // Only approved team members can log in as staff
+          const shopExists = getRegisteredCompanies().some((c) => c.panNumber === cleanPan);
+          setErrorMessage(
+            shopExists
+              ? "No staff account with that name or email at this shop. Sign up as staff first, then ask the owner to approve you."
+              : "No registered showroom company found with this PAN number."
+          );
+          return;
         }
+        if (found.status === "pending_owner_approval") {
+          setPendingNotice(
+            `Application Pending Approval: Your account for ${found.applicantName} (${found.role}) has been submitted to the proprietor of ${found.companyName} (PAN: ${cleanPan}). You will receive access as soon as the showroom owner approves your account.`
+          );
+          return;
+        }
+        if (found.status !== "approved") {
+          setErrorMessage(
+            found.status === "removed"
+              ? `You were removed from the ${found.companyName} team. Ask the owner if you should apply again.`
+              : `The owner of ${found.companyName} did not approve your application.`
+          );
+          return;
+        }
+        saveSession({ role: "staff", showroomName: found.companyName, panNumber: cleanPan, userName: found.applicantName, phone: found.phone });
+        router.push("/");
       } else {
         // Remember the seller so the Sell form already knows their name and phone
         const seller = findSellerAccount(username);
@@ -233,7 +238,7 @@ export default function LoginPage() {
     setPendingNotice(null);
 
     if (targetRole === "recondition") {
-      setUsername("teku.workshop@mulyankan.np");
+      setUsername("teku.hub@mulyankan.np");
       setPassword("TekuRecondition2026");
     } else if (targetRole === "staff") {
       setUsername("bikash.tamang@gmail.com");
@@ -548,7 +553,7 @@ export default function LoginPage() {
                     onChange={(e) => setUsername(e.target.value)}
                     placeholder={
                       role === "recondition"
-                        ? "teku.workshop@mulyankan.np"
+                        ? "teku.hub@mulyankan.np"
                         : role === "staff"
                         ? "bikash.tamang@gmail.com"
                         : "prashant.seller@gmail.com"

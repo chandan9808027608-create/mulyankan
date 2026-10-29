@@ -557,7 +557,15 @@ export default function MulyankanApp() {
     }
 
     // Logged-in showroom owners and staff open straight into the vehicle feed
-    const session = getSession();
+    let session = getSession();
+    // A staff member the owner has removed (or never approved) is signed out
+    if (session?.role === "staff") {
+      const mine = getStaffApplications().filter((a) => a.companyPan === session!.panNumber && a.applicantName === session!.userName);
+      if (mine.length > 0 && !mine.some((a) => a.status === "approved")) {
+        clearSession();
+        session = null;
+      }
+    }
     if (session) {
       setSelectedReconditionHub(session.showroomName);
       setReconditionPan(session.panNumber);

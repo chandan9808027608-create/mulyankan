@@ -8,6 +8,7 @@ import {
   getRegisteredCompanies,
 } from "./companyStaffData";
 import { ScreenHeader, SegmentedTabs, Toast } from "./ScreenHeader";
+import { getSession } from "./session";
 
 interface StaffRecruitmentConsoleProps {
   showroomName: string;
@@ -51,6 +52,16 @@ export default function StaffRecruitmentConsole({
     const updated = updateStaffApplicationStatus(app.id, "rejected", showroomName);
     setApplications(updated.filter((a) => a.companyPan === panNumber));
     notify(`You said no to ${app.applicantName}.`);
+  };
+
+  // Only the owner can take people off the team (staff can see the list)
+  const [isOwner] = useState(() => getSession()?.role === "recondition");
+  const [confirmRemove, setConfirmRemove] = useState<StaffApplication | null>(null);
+  const handleRemoveStaff = (app: StaffApplication) => {
+    const updated = updateStaffApplicationStatus(app.id, "removed", showroomName);
+    setApplications(updated.filter((a) => a.companyPan === panNumber));
+    setConfirmRemove(null);
+    notify(`${app.applicantName} was removed from your team.`);
   };
 
   // Real owner name from the registered company record
@@ -164,12 +175,53 @@ export default function StaffRecruitmentConsole({
                     </a>
                   </p>
                 </div>
-                <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[9px] font-black uppercase">Team</span>
+                {isOwner ? (
+                  <button
+                    type="button"
+                    onClick={() => setConfirmRemove(staff)}
+                    className="shrink-0 h-8 px-3 rounded-lg bg-red-500/10 border border-red-500/30 text-red-300 text-xs font-bold cursor-pointer"
+                  >
+                    Remove
+                  </button>
+                ) : (
+                  <span className="px-1.5 py-0.5 rounded-md bg-emerald-500/15 text-emerald-400 text-[9px] font-black uppercase">Team</span>
+                )}
               </div>
             ))}
+            {approvedApps.length === 0 && <p className="p-4 text-xs text-neutral-500">No team members yet.</p>}
           </div>
         )}
       </div>
+
+      {/* Ask before removing someone */}
+      {confirmRemove && (
+        <div onClick={() => setConfirmRemove(null)} className="fixed inset-0 z-[60] flex items-end sm:items-center justify-center bg-black/70">
+          <div
+            onClick={(e) => e.stopPropagation()}
+            className="sheet-up w-full max-w-md rounded-t-3xl sm:rounded-3xl bg-[#16171d] border border-white/10 p-5 pb-[max(1.5rem,env(safe-area-inset-bottom))] space-y-4"
+          >
+            <div className="mx-auto w-10 h-1 rounded-full bg-white/20 sm:hidden" />
+            <div className="text-center space-y-1">
+              <p className="text-lg font-black text-white">Remove {confirmRemove.applicantName}?</p>
+              <p className="text-xs text-neutral-400">
+                They will no longer be able to log in to {showroomName}. To bring them back, they need to apply again.
+              </p>
+            </div>
+            <div className="flex gap-2">
+              <button type="button" onClick={() => setConfirmRemove(null)} className="flex-1 h-12 rounded-xl bg-white/10 text-white text-sm font-semibold cursor-pointer">
+                Cancel
+              </button>
+              <button
+                type="button"
+                onClick={() => handleRemoveStaff(confirmRemove)}
+                className="flex-1 h-12 rounded-xl bg-red-500 text-white text-sm font-black cursor-pointer"
+              >
+                Remove
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

@@ -23,7 +23,8 @@ export interface StaffApplication {
   password?: string;
   citizenshipNumber?: string;
   appliedDate: string;
-  status: "pending_owner_approval" | "approved" | "rejected";
+  /** "removed": was on the team, taken off by the owner */
+  status: "pending_owner_approval" | "approved" | "rejected" | "removed";
   reviewedAt?: string;
   reviewedBy?: string;
   avatarBg?: string;
@@ -221,10 +222,10 @@ export function submitStaffApplication(app: Omit<StaffApplication, "id" | "appli
   return newApp;
 }
 
-// Helper for showroom proprietor to approve or reject a staff member
+// Helper for showroom proprietor to approve, reject or remove a staff member
 export function updateStaffApplicationStatus(
   appId: string,
-  newStatus: "approved" | "rejected",
+  newStatus: "approved" | "rejected" | "removed",
   reviewedByName: string
 ): StaffApplication[] {
   if (typeof window === "undefined") return INITIAL_STAFF_APPLICATIONS;
