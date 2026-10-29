@@ -968,7 +968,6 @@ export default function MulyankanApp() {
             return true;
           }}
           onShopLogin={() => router.push("/login")}
-          onSignup={() => router.push("/signup")}
         />
       )}
 

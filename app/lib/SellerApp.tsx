@@ -38,7 +38,6 @@ interface SellerAppProps {
   onReject: (bidId: string) => Promise<void>;
   onSendMessage: (bikeId: string, text: string) => Promise<boolean>;
   onShopLogin: () => void;
-  onSignup: () => void;
 }
 
 const READ_KEY = "mulyankan_seller_chat_read";
@@ -146,7 +145,7 @@ export function SellerApp(props: SellerAppProps) {
             </div>
           </div>
         )}
-        {view === "more" && <SellerMore onShopLogin={props.onShopLogin} onSignup={props.onSignup} onSell={onSell} />}
+        {view === "more" && <SellerMore onShopLogin={props.onShopLogin} onSell={onSell} />}
       </main>
 
       <DealerTabBar
@@ -595,11 +594,15 @@ function BikeChat({ messages, onSend }: { messages: DirectMessage[]; onSend: (te
   );
 }
 
-function SellerMore({ onShopLogin, onSignup, onSell }: { onShopLogin: () => void; onSignup: () => void; onSell: () => void }) {
+function SellerMore({ onShopLogin, onSell }: { onShopLogin: () => void; onSell: () => void }) {
   const rows: { label: string; sub: string; icon: string; onClick: () => void }[] = [
     { label: "Sell a bike", sub: "Add a new bike", icon: "M12 4v16m8-8H4", onClick: onSell },
-    { label: "I have a bike shop", sub: "Log in to buy bikes", icon: TAB_ICONS.shop, onClick: onShopLogin },
-    { label: "Create an account", sub: "For shops and their workers", icon: "M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z", onClick: onSignup },
+    {
+      label: "Log in",
+      sub: "For bike shops and their workers",
+      icon: "M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1",
+      onClick: onShopLogin,
+    },
   ];
   return (
     <div className="min-h-full">
