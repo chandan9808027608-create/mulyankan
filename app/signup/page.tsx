@@ -10,7 +10,7 @@ import {
   RegisteredCompany,
   StaffApplication,
 } from "../lib/companyStaffData";
-import { saveSession } from "../lib/session";
+import { addSellerAccount, saveSellerProfile, saveSession } from "../lib/session";
 
 interface UploadedDoc {
   type: "pan" | "company_reg" | "owner_id";
@@ -198,7 +198,20 @@ export default function SignUpPage() {
       return;
     }
 
-    // 3. Normal Seller Registration
+    // 3. Normal Seller Registration: remember the account and log them in, so the
+    // Sell form never asks for their name or phone again
+    if (!fullName.trim() || phone.replace(/\D/g, "").length < 7) {
+      setErrorMessage("Please enter your name and a valid mobile number.");
+      return;
+    }
+    const sellerAccount = {
+      name: fullName.trim(),
+      phone: phone.trim().startsWith("+977") ? phone.trim() : `+977 ${phone.trim()}`,
+      email: email.trim(),
+      location: location.trim() || undefined,
+    };
+    addSellerAccount(sellerAccount);
+    saveSellerProfile(sellerAccount);
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);

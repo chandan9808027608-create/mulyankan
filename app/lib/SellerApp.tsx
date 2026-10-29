@@ -7,6 +7,7 @@ import { DealerTabBar, TAB_ICONS } from "./DealerTabBar";
 import { PhotoSlider } from "./PhotoSlider";
 import { ScreenHeader, SegmentedTabs, Toast } from "./ScreenHeader";
 import { YatayatHandoverModal } from "./YatayatHandoverModal";
+import { clearSellerProfile, getSellerProfile } from "./session";
 
 export type SellerView = "home" | "bikes" | "chats" | "more";
 
@@ -595,19 +596,47 @@ function BikeChat({ messages, onSend }: { messages: DirectMessage[]; onSend: (te
 }
 
 function SellerMore({ onShopLogin, onSell }: { onShopLogin: () => void; onSell: () => void }) {
+  // Only rendered in the browser, so localStorage is safe to read here
+  const [seller, setSeller] = useState(getSellerProfile);
   const rows: { label: string; sub: string; icon: string; onClick: () => void }[] = [
     { label: "Sell a bike", sub: "Add a new bike", icon: "M12 4v16m8-8H4", onClick: onSell },
-    {
-      label: "Log in",
-      sub: "For bike shops and their workers",
-      icon: "M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1",
-      onClick: onShopLogin,
-    },
+    seller
+      ? {
+          label: "Log out",
+          sub: `Logged in as ${seller.name}`,
+          icon: "M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1",
+          onClick: () => {
+            clearSellerProfile();
+            setSeller(null);
+          },
+        }
+      : {
+          label: "Log in",
+          sub: "Sellers, bike shops and their workers",
+          icon: "M11 16l-4-4m0 0l4-4m-4 4h14m-5 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h7a3 3 0 013 3v1",
+          onClick: onShopLogin,
+        },
   ];
   return (
     <div className="min-h-full">
       <ScreenHeader title="More" />
       <div className="max-w-2xl mx-auto p-4 space-y-4">
+        {seller && (
+          <div className="rounded-2xl bg-[#16171d] border border-white/10 p-4 flex items-center gap-3">
+            <span className="w-11 h-11 shrink-0 rounded-xl bg-[#E5B869] text-black font-black flex items-center justify-center">
+              {seller.name
+                .split(/\s+/)
+                .filter(Boolean)
+                .slice(0, 2)
+                .map((w) => w[0]!.toUpperCase())
+                .join("")}
+            </span>
+            <div className="min-w-0">
+              <p className="text-sm font-bold text-white truncate">{seller.name}</p>
+              <p className="text-xs text-neutral-400 truncate">{seller.phone}</p>
+            </div>
+          </div>
+        )}
         <div className="rounded-2xl bg-[#16171d] border border-white/10 divide-y divide-white/10 overflow-hidden">
           {rows.map((r) => (
             <button key={r.label} type="button" onClick={r.onClick} className="w-full flex items-center gap-3 px-4 py-3.5 hover:bg-white/5 text-left cursor-pointer">

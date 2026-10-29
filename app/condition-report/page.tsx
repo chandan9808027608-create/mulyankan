@@ -5,6 +5,7 @@ import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { calculateVehicleValuation } from "../lib/valuationEngine";
 import { postListing, uploadPhotos } from "../lib/postListing";
+import { useLoggedInContact } from "../lib/session";
 
 interface UploadedPhoto {
   id: string;
@@ -62,6 +63,10 @@ function ConditionReportContent() {
   const [condition, setCondition] = useState("excellent");
   const [taxStatus, setTaxStatus] = useState<"cleared" | "pending">("cleared");
   const [phoneNumber, setPhoneNumber] = useState("");
+  // Logged-in sellers/shops: their name and phone are already known, so don't ask
+  const contact = useLoggedInContact();
+  const knownPhone = contact?.phone || "";
+  const shownPhone = knownPhone || `+977 ${phoneNumber || "98XXXXXXXX"}`;
   const [sellerAddress, setSellerAddress] = useState("");
   const [notes, setNotes] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -143,8 +148,8 @@ function ConditionReportContent() {
         url,
         label: `${idx + 1}. ${slotLabels[idx] || "Inspection Photo"}`,
       })),
-      sellerName: "Private Seller",
-      sellerPhone: `+977 ${phoneNumber.trim()}`,
+      sellerName: contact?.name || "Private Seller",
+      sellerPhone: knownPhone || `+977 ${phoneNumber.trim()}`,
       sellerAddress: sellerAddress.trim(),
       inspectionAvailability: "Contact seller to arrange inspection",
       bluebookStatus: `${ownership} Hand Bluebook`,
@@ -717,7 +722,15 @@ function ConditionReportContent() {
                   </div>
 
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    {/* Phone Number Input */}
+                    {/* Phone Number Input (skipped when logged in) */}
+                    {knownPhone ? (
+                      <div className="space-y-1.5">
+                        <span className="block text-xs font-bold uppercase tracking-wider text-neutral-300">Contact</span>
+                        <p className="px-3.5 py-3.5 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-sm text-emerald-300">
+                          Posting as <strong className="text-white">{contact?.name}</strong> • {knownPhone}
+                        </p>
+                      </div>
+                    ) : (
                     <div className="space-y-1.5">
                       <label htmlFor="seller-phone" className="block text-xs font-bold uppercase tracking-wider text-neutral-300">
                         Phone Number (For SMS Bids) <span className="text-red-400">*</span>
@@ -740,6 +753,7 @@ function ConditionReportContent() {
                         Direct SMS updates when recondition shops submit competing bids.
                       </p>
                     </div>
+                    )}
 
                     {/* Address / Location Input */}
                     <div className="space-y-1.5">
@@ -870,7 +884,7 @@ function ConditionReportContent() {
               <div className="p-3.5 rounded-xl bg-black border border-white/10 text-left text-xs space-y-1.5 text-neutral-300">
                 <div className="flex justify-between">
                   <span className="text-neutral-400">SMS Alert Sent:</span>
-                  <span className="text-[#E5B869] font-bold">+977 {phoneNumber || "98XXXXXXXX"}</span>
+                  <span className="text-[#E5B869] font-bold">{shownPhone}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-neutral-400">Vehicle Location:</span>

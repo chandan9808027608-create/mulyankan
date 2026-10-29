@@ -4,7 +4,7 @@ import React, { useState, useEffect } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { getRegisteredCompanies, getStaffApplications } from "../lib/companyStaffData";
-import { saveSession } from "../lib/session";
+import { findSellerAccount, getSellerProfile, getSession, saveSellerProfile, saveSession } from "../lib/session";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -18,6 +18,12 @@ export default function LoginPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [pendingNotice, setPendingNotice] = useState<string | null>(null);
+
+  // Already logged in (e.g. reopening the Android app, which starts here): go straight to their screens
+  useEffect(() => {
+    if (getSession()) router.replace("/");
+    else if (getSellerProfile()) router.replace("/?tab=seller_dashboard");
+  }, [router]);
 
   // Phone Mockup Tutorial State
   const [phoneTutorialRole, setPhoneTutorialRole] = useState<"seller" | "recondition" | "staff">("staff");
@@ -209,7 +215,13 @@ export default function LoginPage() {
           }
         }
       } else {
-        // Go to seller postings dashboard
+        // Remember the seller so the Sell form already knows their name and phone
+        const seller = findSellerAccount(username);
+        if (!seller) {
+          setErrorMessage("No seller account found with that email or phone. Please sign up first.");
+          return;
+        }
+        saveSellerProfile(seller);
         router.push("/?tab=seller_dashboard");
       }
     }, 700);
