@@ -101,7 +101,8 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
   const addFiles = (files: FileList | null | undefined) => {
     if (!files) return;
     const picked = Array.from(files)
-      .filter((f) => f.type.startsWith("image/"))
+      // Some phone galleries hand over photos with no type; keep those too
+      .filter((f) => f.type.startsWith("image/") || f.type === "")
       .map((file) => ({ file, previewUrl: URL.createObjectURL(file) }));
     setPhotos((prev) => [...prev, ...picked].slice(0, MAX_PHOTOS));
   };

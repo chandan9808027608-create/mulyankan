@@ -21,14 +21,23 @@ export async function postListing<T extends object>(listing: T): Promise<T & { i
 
 const MAX_SIDE = 1600;
 
+const WEB_FORMATS = ["image/jpeg", "image/png", "image/webp"];
+
 // Phone photos are often 4-10 MB, over the host's 4.5 MB request limit, so shrink
-// them to a 1600px JPEG first. Formats the browser can't draw (e.g. HEIC) go up as-is.
+// them to a 1600px JPEG first. Untyped files (some phone galleries) and HEIC are
+// converted too, since browsers can't show HEIC to the shops viewing the bike.
 async function shrinkPhoto(file: File): Promise<File> {
-  if (!file.type.startsWith("image/") || file.type === "image/gif") return file;
+  if (file.type === "image/gif" || (file.type && !file.type.startsWith("image/"))) return file;
+  let bitmap: ImageBitmap;
   try {
-    const bitmap = await createImageBitmap(file);
+    bitmap = await createImageBitmap(file);
+  } catch {
+    if (WEB_FORMATS.includes(file.type)) return file;
+    throw new Error("This photo's format can't be used (it may be HEIC). Please pick a JPG photo, or set your camera to save photos as JPG.");
+  }
+  try {
     const scale = Math.min(1, MAX_SIDE / Math.max(bitmap.width, bitmap.height));
-    if (scale === 1 && file.size < 1.5 * 1024 * 1024) {
+    if (scale === 1 && file.size < 1.5 * 1024 * 1024 && WEB_FORMATS.includes(file.type)) {
       bitmap.close();
       return file;
     }
