@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from "react";
 import { getStaffApplications } from "./companyStaffData";
 import { useLiveUpdates } from "./useLiveUpdates";
+import { getLoggedInContact } from "./session";
 
 export interface StaffMember {
   id: string;
@@ -177,7 +178,9 @@ export const StaffGroupChat = React.memo(function StaffGroupChat({
     if (e) e.preventDefault();
     if (!inputText.trim() && !isOfferMode) return;
 
-    let me = identity;
+    // Logged in: use the login name, never ask
+    const loginName = getLoggedInContact()?.name;
+    let me = loginName ? { ...identity, name: loginName } : identity;
     if (!me.name) {
       const entered = window.prompt("Your name (shown to your showroom team):", "")?.trim();
       if (!entered) return;

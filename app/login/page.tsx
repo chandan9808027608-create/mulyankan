@@ -174,6 +174,7 @@ export default function LoginPage() {
           showroomName: company.businessName,
           panNumber: company.panNumber,
           userName: company.ownerName,
+          phone: company.phone,
         });
         router.push("/");
       } else if (role === "staff") {
@@ -194,14 +195,14 @@ export default function LoginPage() {
             return;
           }
           // Approved staff
-          saveSession({ role: "staff", showroomName: found.companyName, panNumber: cleanPan, userName: found.applicantName });
+          saveSession({ role: "staff", showroomName: found.companyName, panNumber: cleanPan, userName: found.applicantName, phone: found.phone });
           router.push("/");
         } else {
           // Check if company exists
           const companies = getRegisteredCompanies();
           const comp = companies.find((c) => c.panNumber === cleanPan);
           if (comp) {
-            saveSession({ role: "staff", showroomName: comp.businessName, panNumber: cleanPan, userName: username.trim() || undefined });
+            saveSession({ role: "staff", showroomName: comp.businessName, panNumber: cleanPan, userName: username.trim() || undefined, phone: comp.phone });
             router.push("/");
           } else {
             setErrorMessage("No registered showroom company found with this PAN number.");

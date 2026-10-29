@@ -2,6 +2,7 @@
 
 import React, { useState, useRef } from "react";
 import { uploadPhotos } from "./postListing";
+import { getLoggedInContact } from "./session";
 
 export interface DirectPostData {
   id: string;
@@ -92,6 +93,11 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
 
   if (!isOpen) return null;
 
+  // Logged-in shop owners / staff: their name and phone are already known, so don't ask
+  const contact = getLoggedInContact();
+  const knownName = contact?.name || "";
+  const knownPhone = contact?.phone || "";
+
   const addFiles = (files: FileList | null | undefined) => {
     if (!files) return;
     const picked = Array.from(files)
@@ -153,7 +159,8 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
 
     const price = Number(askingPrice) || 0;
     const plate = numberPlate.trim().toUpperCase();
-    const phone = sellerPhone.trim().startsWith("+977") ? sellerPhone.trim() : `+977 ${sellerPhone.trim()}`;
+    const rawPhone = (knownPhone || sellerPhone).trim();
+    const phone = rawPhone.startsWith("+977") ? rawPhone : `+977 ${rawPhone}`;
 
     const newVehicle: DirectPostData = {
       id: `direct-post-${Date.now()}`,
@@ -172,7 +179,7 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
       timeLeft: "OPEN",
       imageUrl: photoUrls[0],
       images: photoUrls.map((url, idx) => ({ url, label: `${idx + 1}. Seller Photo` })),
-      sellerName: sellerName.trim(),
+      sellerName: (knownName || sellerName).trim(),
       sellerPhone: phone,
       sellerAddress: location.trim(),
       inspectionAvailability: "Contact seller to arrange inspection",
@@ -361,24 +368,33 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
             </div>
           </div>
 
+          {contact && (
+            <p className="px-3 py-2 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-xs text-emerald-300">
+              Posting as <strong className="text-white">{knownName}</strong>
+              {knownPhone && <> • {knownPhone}</>}
+            </p>
+          )}
+
           {/* Contact Details & Location */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-neutral-300 block mb-1">
-                Your Mobile / WhatsApp <span className="text-amber-400">*</span>
-              </label>
-              <input
-                type="tel"
-                required
-                value={sellerPhone}
-                onChange={(e) => setSellerPhone(e.target.value)}
-                placeholder="98XXXXXXXX (No login needed)"
-                className="w-full bg-black/60 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#E5B869]"
-              />
-              <p className="text-[10px] text-neutral-400 mt-1">
-                Used only by verified workshops when you approve an offer.
-              </p>
-            </div>
+            {!knownPhone && (
+              <div>
+                <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                  Your Mobile / WhatsApp <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  type="tel"
+                  required
+                  value={sellerPhone}
+                  onChange={(e) => setSellerPhone(e.target.value)}
+                  placeholder="98XXXXXXXX (No login needed)"
+                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#E5B869]"
+                />
+                <p className="text-[10px] text-neutral-400 mt-1">
+                  Used only by verified workshops when you approve an offer.
+                </p>
+              </div>
+            )}
 
             <div>
               <label className="text-xs font-semibold text-neutral-300 block mb-1">
@@ -396,20 +412,22 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
           </div>
 
           {/* Seller Name, Number Plate & Condition */}
-          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-            <div>
-              <label className="text-xs font-semibold text-neutral-300 block mb-1">
-                Your Name <span className="text-amber-400">*</span>
-              </label>
-              <input
-                type="text"
-                required
-                value={sellerName}
-                onChange={(e) => setSellerName(e.target.value)}
-                placeholder="e.g. Prashant Shrestha"
-                className="w-full bg-black/60 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#E5B869]"
-              />
-            </div>
+          <div className={`grid grid-cols-1 gap-3 ${knownName ? "sm:grid-cols-2" : "sm:grid-cols-3"}`}>
+            {!knownName && (
+              <div>
+                <label className="text-xs font-semibold text-neutral-300 block mb-1">
+                  Your Name <span className="text-amber-400">*</span>
+                </label>
+                <input
+                  type="text"
+                  required
+                  value={sellerName}
+                  onChange={(e) => setSellerName(e.target.value)}
+                  placeholder="e.g. Prashant Shrestha"
+                  className="w-full bg-black/60 border border-white/15 rounded-xl px-3.5 py-2 text-xs text-white focus:outline-none focus:border-[#E5B869]"
+                />
+              </div>
+            )}
             <div>
               <label className="text-xs font-semibold text-neutral-300 block mb-1">
                 Number Plate <span className="text-amber-400">*</span>

@@ -5,6 +5,7 @@ import type { DirectMessage } from "./dealerBidsData";
 import type { ReelVehicle } from "./VehicleReelsFeed";
 import { useLiveUpdates } from "./useLiveUpdates";
 import { formatNpr } from "./likedBikes";
+import { getLoggedInContact } from "./session";
 
 type ChatVehicle = ReelVehicle & { sellerName?: string };
 
@@ -152,6 +153,9 @@ export const ChatInbox = React.memo(function ChatInbox({
     !!lastIso && !lastIsMine && (!readMarksState[key] || Date.parse(lastIso) > Date.parse(readMarksState[key]));
 
   const ensureName = (): { id: string; name: string } | null => {
+    // Logged in: use the login name, never ask
+    const loginName = getLoggedInContact()?.name;
+    if (loginName) return { ...identity, name: loginName };
     if (identity.name) return identity;
     const entered = window.prompt("Your name (your team will see it):", "")?.trim();
     if (!entered) return null;
