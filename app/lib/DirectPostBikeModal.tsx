@@ -122,6 +122,15 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
     e.preventDefault();
     setSubmitError(null);
 
+    if (!odometer) {
+      setSubmitError("Enter how many km the bike has done.");
+      return;
+    }
+    if (!Number(askingPrice) || Number(askingPrice) < 1000) {
+      setSubmitError("Enter your asking price in NPR (for example 325000).");
+      return;
+    }
+
     const remoteUrl = customUrlInput.trim();
     if (imageMode === "upload" && photos.length === 0) {
       setSubmitError("Add at least one photo of your bike.");
@@ -324,12 +333,12 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
                 Mileage (KM)
               </label>
               <input
-                type="number"
-                step="500"
-                min="0"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
                 required
                 value={odometer}
-                onChange={(e) => setOdometer(e.target.value)}
+                onChange={(e) => setOdometer(e.target.value.replace(/\D/g, ""))}
                 placeholder="e.g. 12000"
                 className="w-full bg-black/60 border border-white/15 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-[#E5B869]"
               />
@@ -340,12 +349,12 @@ export const DirectPostBikeModal = React.memo(function DirectPostBikeModal({
                 Your Asking Price (NPR)
               </label>
               <input
-                type="number"
-                step="5000"
-                min="20000"
+                type="text"
+                inputMode="numeric"
+                autoComplete="off"
                 required
                 value={askingPrice}
-                onChange={(e) => setAskingPrice(e.target.value)}
+                onChange={(e) => setAskingPrice(e.target.value.replace(/\D/g, ""))}
                 placeholder="e.g. 325000"
                 className="w-full bg-black/60 border border-[#E5B869]/50 rounded-xl px-3 py-2 text-xs text-[#E5B869] font-bold focus:outline-none focus:ring-1 focus:ring-[#E5B869]"
               />

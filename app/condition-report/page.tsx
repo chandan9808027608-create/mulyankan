@@ -476,10 +476,12 @@ function ConditionReportContent() {
                       </div>
                       <input
                         id="odometer"
-                        type="number"
+                        type="text"
+                        inputMode="numeric"
+                        autoComplete="off"
                         required
                         value={odometer}
-                        onChange={(e) => setOdometer(e.target.value)}
+                        onChange={(e) => setOdometer(e.target.value.replace(/\D/g, ""))}
                         placeholder="e.g. 14500"
                         className="w-full bg-black border border-white/20 rounded-xl pl-10 pr-14 py-3.5 text-white placeholder-neutral-500 text-sm focus:outline-none focus:ring-2 focus:ring-[#E5B869]/50 focus:border-[#E5B869] transition-all"
                       />
